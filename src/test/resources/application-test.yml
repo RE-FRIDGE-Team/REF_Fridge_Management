@@ -1,0 +1,35 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+
+  flyway:
+    enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+  # Spring AI 모델 자동 구성 전체 비활성화
+  # contextLoads 테스트에서 OpenAI API 키, pgvector 연결 불필요
+  ai:
+    openai:
+      api-key: "test-dummy-key"  # 빈 값이면 오류, dummy값 필요
+      chat:
+        enabled: false
+      embedding:
+        enabled: false
+      audio:
+        speech:
+          enabled: false
+        transcription:
+          enabled: false
+      image:
+        enabled: false
+    vectorstore:
+      pgvector:
+        initialize-schema: false
+
+logging:
+  level:
+    com.refridge: DEBUG

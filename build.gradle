@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'groovy'
     id 'org.springframework.boot' version '4.0.5'
     id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -14,26 +15,110 @@ java {
     }
 }
 
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+    querydsl {
+        extendsFrom compileClasspath
+        // Spring AI는 QueryDSL APT와 무관 — compileQuerydsl 단계에서 BOM 미해석 오류 방지
+        exclude group: 'org.springframework.ai'
+    }
+}
+
 repositories {
     mavenCentral()
+    // Spring AI 2.0.0-M4는 Milestone 버전이므로 milestone 저장소 필수
+    maven { url = 'https://repo.spring.io/milestone' }
+}
+
+ext {
+    queryDslVersion       = '5.1.0'
+    spockVersion          = '2.4-groovy-4.0'
+    testcontainersVersion = '1.20.4'
+    // Spring AI 2.0.0-M4: Spring Boot 4.0 + Spring Framework 7.0 공식 지원
+    // Spring AI 1.0.x는 Boot 4.x와 비호환 (RestClientAutoConfiguration 패키지 변경으로 기동 불가)
+    springAiVersion       = '2.0.0-M4'
+}
+
+// ── Spring AI BOM ─────────────────────────────────────────────────────
+// io.spring.dependency-management 플러그인 사용 시 반드시 imports 방식 사용.
+// platform() 방식과 혼용하면 버전 해석 충돌 발생.
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+    // ── Spring Boot Starters ──────────────────────────────────────────
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // ── DB: PostgreSQL ────────────────────────────────────────────────
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // ── Flyway ───────────────────────────────────────────────────────
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // ── Spring AI 2.0.0-M4 (Boot 4.x 호환) ──────────────────────────
+    // 아티팩트 ID는 1.0.0 GA와 동일한 신규 명칭 유지
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+
+    // ── QueryDSL 5.1.0 (jakarta) ─────────────────────────────────────
+    implementation "com.querydsl:querydsl-jpa:${queryDslVersion}:jakarta"
+    annotationProcessor "com.querydsl:querydsl-apt:${queryDslVersion}:jakarta"
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+
+    // ── Redis Streams ─────────────────────────────────────────────────
+    implementation 'io.lettuce:lettuce-core'
+
+    // ── Micrometer / Prometheus ───────────────────────────────────────
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    // ── Lombok ───────────────────────────────────────────────────────
     compileOnly 'org.projectlombok:lombok'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
-    runtimeOnly 'com.mysql:mysql-connector-j'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.projectlombok:lombok'
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-jdbc-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+
+    // ── Dev Tools ────────────────────────────────────────────────────
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+
+    // ── Test ─────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation "org.testcontainers:postgresql:${testcontainersVersion}"
+    testImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+    testImplementation "org.testcontainers:jdbc:${testcontainersVersion}"
+
+    testImplementation "org.spockframework:spock-core:${spockVersion}"
+    testImplementation "org.spockframework:spock-spring:${spockVersion}"
+    testImplementation 'org.apache.groovy:groovy-all:4.0.22'
+
     testCompileOnly 'org.projectlombok:lombok'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// ── QueryDSL (플러그인 없이 직접 설정) ──────────────────────────────────
+def querydslDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
+
+sourceSets {
+    main {
+        java.srcDirs += querydslDir
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.generatedSourceOutputDirectory = querydslDir
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+    jvmArgs '-Dspring.profiles.active=test'
 }

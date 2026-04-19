@@ -1,10 +1,51 @@
+# fridge_server 전용 Docker Compose
+#
+# ── 포트 현황 (core_server와 충돌 없음) ──────────────────────────────
+#   core_server: 8080, MySQL 3306, Redis 6379
+#   fridge_server: 8081, PostgreSQL 5433, Redis 6380
+#
+# ── DB 단일화 결정 ───────────────────────────────────────────────────
+#   pgvector(Spring AI VectorStore) 사용을 위해 PostgreSQL을 이미 띄움.
+#   MySQL을 추가로 운영할 이유가 없으므로 PostgreSQL 단일 인스턴스 사용.
+#   도메인 DB와 벡터 DB는 동일 인스턴스, 스키마로 분리:
+#     - fridge_schema  : 냉장고 도메인 테이블
+#     - vector_schema  : Spring AI pgvector 테이블
+
 services:
-  mysql:
-    image: 'mysql:latest'
+  # ── PostgreSQL (도메인 + pgvector 통합) ───────────────────────────
+  postgres-fridge:
+    image: 'pgvector/pgvector:pg16'
+    container_name: fridge-postgres
     environment:
-      - 'MYSQL_DATABASE=mydatabase'
-      - 'MYSQL_PASSWORD=secret'
-      - 'MYSQL_ROOT_PASSWORD=verysecret'
-      - 'MYSQL_USER=myuser'
+      POSTGRES_DB: fridge_db
+      POSTGRES_USER: fridge_user
+      POSTGRES_PASSWORD: fridge_secret
     ports:
-      - '3306'
+      - '5433:5432'           # 호스트 5433 → 컨테이너 5432 (기본 5432와 충돌 방지)
+    volumes:
+      - fridge-postgres-data:/var/lib/postgresql/data
+      - ./docker/init-schemas.sql:/docker-entrypoint-initdb.d/init-schemas.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fridge_user -d fridge_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (Streams + Pub/Sub + Cache) ─────────────────────────────
+  redis-fridge:
+    image: 'redis:7.4-alpine'
+    container_name: fridge-redis
+    ports:
+      - '6380:6379'           # 호스트 6380 (core_server Redis 6379와 충돌 방지)
+    command: redis-server --appendonly yes
+    volumes:
+      - fridge-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  fridge-postgres-data:
+  fridge-redis-data:
