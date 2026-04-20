@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.refridge.fridge_management.FridgeManagementApplicationTests" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-04-19T11:17:21.606Z" hostname="seunghoonui-MacBookPro.local" time="2.971">
+<testsuite name="com.refridge.fridge_management.FridgeManagementApplicationTests" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-04-19T14:35:22.139Z" hostname="seunghoonui-MacBookPro.local" time="2.898">
   <properties/>
-  <testcase name="contextLoads()" classname="com.refridge.fridge_management.FridgeManagementApplicationTests" time="0.24"/>
-  <system-out><![CDATA[20:17:21.665 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.refridge.fridge_management.FridgeManagementApplicationTests]: FridgeManagementApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-20:17:21.722 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.refridge.fridge_management.FridgeManagementApplication for test class com.refridge.fridge_management.FridgeManagementApplicationTests
-20:17:21.772 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.refridge.fridge_management.FridgeManagementApplicationTests]: FridgeManagementApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
-20:17:21.775 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.refridge.fridge_management.FridgeManagementApplication for test class com.refridge.fridge_management.FridgeManagementApplicationTests
+  <testcase name="contextLoads()" classname="com.refridge.fridge_management.FridgeManagementApplicationTests" time="0.242"/>
+  <system-out><![CDATA[23:35:22.199 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.refridge.fridge_management.FridgeManagementApplicationTests]: FridgeManagementApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+23:35:22.243 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.refridge.fridge_management.FridgeManagementApplication for test class com.refridge.fridge_management.FridgeManagementApplicationTests
+23:35:22.272 [Test worker] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.refridge.fridge_management.FridgeManagementApplicationTests]: FridgeManagementApplicationTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+23:35:22.274 [Test worker] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.refridge.fridge_management.FridgeManagementApplication for test class com.refridge.fridge_management.FridgeManagementApplicationTests
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -16,24 +16,24 @@
 
  :: Spring Boot ::                (v4.0.5)
 
-2026-04-19T20:17:21.970+09:00  INFO 97952 --- [fridge_server] [    Test worker] c.r.f.FridgeManagementApplicationTests   : Starting FridgeManagementApplicationTests using Java 21.0.10 with PID 97952 (started by lsh in /Users/lsh/Desktop/REFRIDGE/REF_Fridge_Management)
-2026-04-19T20:17:21.971+09:00 DEBUG 97952 --- [fridge_server] [    Test worker] c.r.f.FridgeManagementApplicationTests   : Running with Spring Boot v4.0.5, Spring v7.0.6
-2026-04-19T20:17:21.971+09:00  INFO 97952 --- [fridge_server] [    Test worker] c.r.f.FridgeManagementApplicationTests   : The following 1 profile is active: "test"
-2026-04-19T20:17:22.393+09:00  INFO 97952 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
-2026-04-19T20:17:22.394+09:00  INFO 97952 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-04-19T20:17:22.405+09:00  INFO 97952 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 7 ms. Found 0 JPA repository interfaces.
-2026-04-19T20:17:22.420+09:00  INFO 97952 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
-2026-04-19T20:17:22.420+09:00  INFO 97952 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
-2026-04-19T20:17:22.426+09:00  INFO 97952 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 1 ms. Found 0 Redis repository interfaces.
-2026-04-19T20:17:22.640+09:00  INFO 97952 --- [fridge_server] [    Test worker] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
-2026-04-19T20:17:22.662+09:00  INFO 97952 --- [fridge_server] [    Test worker] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.2.7.Final
-2026-04-19T20:17:22.829+09:00  INFO 97952 --- [fridge_server] [    Test worker] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-04-19T20:17:22.843+09:00  INFO 97952 --- [fridge_server] [    Test worker] com.zaxxer.hikari.HikariDataSource       : fridge-hikari-pool - Starting...
-2026-04-19T20:17:22.941+09:00  INFO 97952 --- [fridge_server] [    Test worker] com.zaxxer.hikari.pool.HikariPool        : fridge-hikari-pool - Added connection org.postgresql.jdbc.PgConnection@1a4c6e74
-2026-04-19T20:17:22.942+09:00  INFO 97952 --- [fridge_server] [    Test worker] com.zaxxer.hikari.HikariDataSource       : fridge-hikari-pool - Start completed.
-2026-04-19T20:17:22.960+09:00  WARN 97952 --- [fridge_server] [    Test worker] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-04-19T20:17:22.970+09:00  INFO 97952 --- [fridge_server] [    Test worker] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
-	Database JDBC URL [jdbc:postgresql://localhost:5433/fridge_db?currentSchema=fridge_schema]
+2026-04-19T23:35:22.429+09:00  INFO 7330 --- [fridge_server] [    Test worker] c.r.f.FridgeManagementApplicationTests   : Starting FridgeManagementApplicationTests using Java 21.0.10 with PID 7330 (started by lsh in /Users/lsh/Desktop/REFRIDGE/REF_Fridge_Management)
+2026-04-19T23:35:22.429+09:00 DEBUG 7330 --- [fridge_server] [    Test worker] c.r.f.FridgeManagementApplicationTests   : Running with Spring Boot v4.0.5, Spring v7.0.6
+2026-04-19T23:35:22.430+09:00  INFO 7330 --- [fridge_server] [    Test worker] c.r.f.FridgeManagementApplicationTests   : The following 1 profile is active: "test"
+2026-04-19T23:35:22.934+09:00  INFO 7330 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-19T23:35:22.935+09:00  INFO 7330 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-19T23:35:22.947+09:00  INFO 7330 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 7 ms. Found 0 JPA repository interfaces.
+2026-04-19T23:35:22.963+09:00  INFO 7330 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-19T23:35:22.964+09:00  INFO 7330 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-04-19T23:35:22.970+09:00  INFO 7330 --- [fridge_server] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 1 ms. Found 0 Redis repository interfaces.
+2026-04-19T23:35:23.182+09:00  INFO 7330 --- [fridge_server] [    Test worker] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-04-19T23:35:23.203+09:00  INFO 7330 --- [fridge_server] [    Test worker] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.2.7.Final
+2026-04-19T23:35:23.369+09:00  INFO 7330 --- [fridge_server] [    Test worker] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-19T23:35:23.382+09:00  INFO 7330 --- [fridge_server] [    Test worker] com.zaxxer.hikari.HikariDataSource       : fridge-hikari-pool - Starting...
+2026-04-19T23:35:23.473+09:00  INFO 7330 --- [fridge_server] [    Test worker] com.zaxxer.hikari.pool.HikariPool        : fridge-hikari-pool - Added connection org.postgresql.jdbc.PgConnection@3a22d69f
+2026-04-19T23:35:23.474+09:00  INFO 7330 --- [fridge_server] [    Test worker] com.zaxxer.hikari.HikariDataSource       : fridge-hikari-pool - Start completed.
+2026-04-19T23:35:23.492+09:00  WARN 7330 --- [fridge_server] [    Test worker] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-19T23:35:23.503+09:00  INFO 7330 --- [fridge_server] [    Test worker] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:postgresql://localhost:5433/fridge_db?currentSchema=fridge_schema&options=-c%20search_path%3Dfridge_schema%2Cvector_schema%2Cpublic]
 	Database driver: PostgreSQL JDBC Driver
 	Database dialect: PostgreSQLDialect
 	Database version: 16.13
@@ -44,14 +44,14 @@
 	Pool: DataSourceConnectionProvider
 	Minimum pool size: undefined/unknown
 	Maximum pool size: undefined/unknown
-2026-04-19T20:17:23.440+09:00  INFO 97952 --- [fridge_server] [    Test worker] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-04-19T20:17:23.444+09:00  INFO 97952 --- [fridge_server] [    Test worker] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-04-19T20:17:23.979+09:00  INFO 97952 --- [fridge_server] [    Test worker] o.s.a.v.pgvector.PgVectorStore           : Using the vector table name: food_knowledge. Is empty: false
-2026-04-19T20:17:23.981+09:00  INFO 97952 --- [fridge_server] [    Test worker] o.s.a.v.pgvector.PgVectorStore           : Initializing PGVectorStore schema for table: food_knowledge in schema: vector_schema
-2026-04-19T20:17:23.981+09:00  INFO 97952 --- [fridge_server] [    Test worker] o.s.a.v.pgvector.PgVectorStore           : vectorTableValidationsEnabled false
-2026-04-19T20:17:24.040+09:00 ERROR 97952 --- [fridge_server] [    Test worker] i.n.r.d.DnsServerAddressStreamProviders  : Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This may result in incorrect DNS resolutions on MacOS. Check whether you have a dependency on 'io.netty:netty-resolver-dns-native-macos'. Use DEBUG level to see the full stack: java.lang.UnsatisfiedLinkError: failed to load the required native library
-2026-04-19T20:17:24.248+09:00  INFO 97952 --- [fridge_server] [    Test worker] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 4 endpoints beneath base path '/actuator'
-2026-04-19T20:17:24.290+09:00  INFO 97952 --- [fridge_server] [    Test worker] c.r.f.FridgeManagementApplicationTests   : Started FridgeManagementApplicationTests in 2.479 seconds (process running for 3.062)
+2026-04-19T23:35:23.969+09:00  INFO 7330 --- [fridge_server] [    Test worker] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-04-19T23:35:23.972+09:00  INFO 7330 --- [fridge_server] [    Test worker] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-19T23:35:24.464+09:00  INFO 7330 --- [fridge_server] [    Test worker] o.s.a.v.pgvector.PgVectorStore           : Using the vector table name: food_knowledge. Is empty: false
+2026-04-19T23:35:24.466+09:00  INFO 7330 --- [fridge_server] [    Test worker] o.s.a.v.pgvector.PgVectorStore           : Initializing PGVectorStore schema for table: food_knowledge in schema: vector_schema
+2026-04-19T23:35:24.466+09:00  INFO 7330 --- [fridge_server] [    Test worker] o.s.a.v.pgvector.PgVectorStore           : vectorTableValidationsEnabled false
+2026-04-19T23:35:24.518+09:00 ERROR 7330 --- [fridge_server] [    Test worker] i.n.r.d.DnsServerAddressStreamProviders  : Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This may result in incorrect DNS resolutions on MacOS. Check whether you have a dependency on 'io.netty:netty-resolver-dns-native-macos'. Use DEBUG level to see the full stack: java.lang.UnsatisfiedLinkError: failed to load the required native library
+2026-04-19T23:35:24.720+09:00  INFO 7330 --- [fridge_server] [    Test worker] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 4 endpoints beneath base path '/actuator'
+2026-04-19T23:35:24.759+09:00  INFO 7330 --- [fridge_server] [    Test worker] c.r.f.FridgeManagementApplicationTests   : Started FridgeManagementApplicationTests in 2.459 seconds (process running for 3.05)
 ]]></system-out>
   <system-err><![CDATA[Mockito is currently self-attaching to enable the inline-mock-maker. This will no longer work in future releases of the JDK. Please add Mockito as an agent to your build as described in Mockito's documentation: https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html#0.3
 WARNING: A Java agent has been loaded dynamically (/Users/lsh/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy-agent/1.17.8/f09415827a71be7ed621c7bd02550678f28bc81c/byte-buddy-agent-1.17.8.jar)

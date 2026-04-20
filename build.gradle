@@ -60,7 +60,7 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
 
     // ── Flyway ───────────────────────────────────────────────────────
-    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.flywaydb:flyway-database-postgresql'
 
     // ── Spring AI 2.0.0-M4 (Boot 4.x 호환) ──────────────────────────
