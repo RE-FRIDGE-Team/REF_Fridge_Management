@@ -13,25 +13,46 @@ import java.util.*;
 /**
  * 냉장고 Aggregate Root.
  *
- * ── AbstractAggregateRoot 선택 이유 ─────────────────────────────────
- * Spring Data JPA의 {@link AbstractAggregateRoot}를 상속하면
- * {@code registerEvent(event)}로 이벤트를 등록하고,
- * {@code repository.save(fridge)} 완료 후 Spring이 자동으로
- * {@link org.springframework.context.ApplicationEventPublisher}를 통해
- * 이벤트를 발행한다.
+ * <h2>책임</h2>
+ * <ul>
+ *   <li>냉장고 내 모든 식품(FridgeItem) 생명주기를 단일 트랜잭션 경계 안에서 관리한다.</li>
+ *   <li>불변식: {@code fridgeMeta.totalValue == ∑ ACTIVE FridgeItem.purchasePrice}</li>
+ *   <li>불변식: {@code fridgeMeta.activeItemCount == ACTIVE 상태 FridgeItem 개수}</li>
+ *   <li>회원당 냉장고는 정확히 1개 ({@code uq_fridge_member_id}).</li>
+ * </ul>
  *
- * ── 생성자 보호 ──────────────────────────────────────────────────────
- * JPA 기본 생성자: protected (JPA 내부 전용).
- * 외부에서 Fridge 인스턴스를 만드는 유일한 방법은 {@link Fridge#create(String)}.
+ * <h2>생성</h2>
+ * 외부에서 new Fridge()를 직접 호출하는 것은 금지되어 있다.
+ * 유일한 생성 경로는 {@link #create(String)} 팩토리 메서드이며,
+ * 이 때 상온·냉장·냉동 3개 구역이 자동으로 초기화된다.
  *
- * ── FridgeSection/FridgeItem 접근 보호 ──────────────────────────────
- * FridgeSection.create(), FridgeSection.addItem(): package-private
- * FridgeItem.create(), FridgeItem.createPortioned(): package-private
- * → Fridge 메서드(fill, portion, cook)를 통해서만 아이템이 추가된다.
+ * <h2>도메인 연산 — 진입점</h2>
+ * <pre>
+ *   Fridge.fill(...)         → 아이템 추가 (Recognition 완료 후)
+ *   Fridge.consume(id)       → 먹기 → FridgeItemConsumedEvent 발행
+ *   Fridge.dispose(id)       → 폐기 → FridgeItemDisposedEvent 발행
+ *   Fridge.move(id, section) → 구역 이동 → FridgeItemMovedEvent 발행
+ *   Fridge.portion(id, n)    → 소분 → 자식 FridgeItem n개 생성
+ *   Fridge.extend(id, days)  → 유통기한 연장 (임박·만료 아이템 한정)
+ *   Fridge.cook(...)         → 즉석 요리 (재료 일괄 소비 + 요리 결과 생성)
+ * </pre>
  *
- * ── 불변식 ───────────────────────────────────────────────────────────
- * fridgeMeta.totalValue      == ∑ ACTIVE FridgeItem.purchasePrice
- * fridgeMeta.activeItemCount == ACTIVE FridgeItem 총 수
+ * <h2>이벤트 발행</h2>
+ * {@link org.springframework.data.domain.AbstractAggregateRoot}를 상속하므로
+ * {@link #registerEvent(Object)} 로 등록된 이벤트는
+ * {@code FridgeRepository.save()} 완료 직후 Spring ApplicationEventPublisher를 통해 자동 발행된다.
+ * 이벤트 수신측: Saving BC, notification_server (Redis Stream 경유).
+ *
+ * <h2>하위 엔티티 접근 제어</h2>
+ * {@link FridgeSection#create} 및 {@link FridgeItem#create}는 package-private이다.
+ * 외부 레이어(Application Service)는 반드시 Fridge의 도메인 메서드를 통해서만 아이템을 조작해야 한다.
+ *
+ * @author 승훈
+ * @since 2025-04.20
+ * @see FridgeSection
+ * @see FridgeItem
+ * @see FridgeDomainEvent
+ * @see com.refridge.fridge_management.fridge.domain.policy.UpwardMoveWarningPolicy
  */
 @Entity
 @Table(

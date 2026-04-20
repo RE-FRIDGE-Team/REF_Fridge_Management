@@ -11,26 +11,43 @@ import java.util.UUID;
 /**
  * 냉장고 아이템 Entity.
  *
- * ── 생성 보호 ────────────────────────────────────────────────────────
- * 외부에서 직접 new FridgeItem() 또는 FridgeItem.create()를 호출할 수 없다.
- * 유일한 진입점은 {@link Fridge#fill}과 {@link Fridge#portion}.
- * 이를 위해:
- *  - JPA용 기본 생성자: protected (JPA 프록시는 같은 패키지 or 서브클래스)
- *  - create() 팩토리: package-private (같은 도메인 패키지인 Fridge만 호출 가능)
- *  - 상태 변경 메서드(consume, dispose, ...): package-private (Fridge에서만 호출)
+ * <h2>책임</h2>
+ * <ul>
+ *   <li>하나의 식품 아이템의 상태(ACTIVE→소비/폐기/소분)와 속성(수량, 가격, 유통기한)을 보관한다.</li>
+ *   <li>상태 변경 메서드는 모두 package-private: 반드시 {@link Fridge}를 통해서만 호출된다.</li>
+ * </ul>
  *
- * ── 연관관계 owner ────────────────────────────────────────────────────
- * FridgeItem이 FridgeSection의 연관관계 owner.
- * FridgeSection.items는 mappedBy = "fridgeSection" 으로 역방향 참조.
- * FridgeItem은 fridge(Fridge)와 fridgeSection(FridgeSection) 둘 다 보유:
- *  - fridge: 이벤트/쿼리에서 Fridge 직접 참조 필요 시
- *  - fridgeSection: JPA 연관관계 owner (FK = fridge_section_id)
+ * <h2>상태 머신</h2>
+ * <pre>
+ * ACTIVE ──consume()────────► CONSUMED      (terminal: 먹기 완료)
+ *   ├──dispose()────────────► DISPOSED      (terminal: 폐기 처리)
+ *   ├──markPortionedOut()──► PORTIONED_OUT  (terminal: 소분 원본, 자식 아이템 N개 생성됨)
+ *   └──moveTo(section)──────► ACTIVE        (sectionType 변경만, 상태 유지)
+ * </pre>
+ * terminal 상태에서는 어떤 상태 전이도 불가능하다({@link #assertActive} 참조).
  *
- * ── 상태 머신 ────────────────────────────────────────────────────────
- * ACTIVE ──consume()────> CONSUMED      (terminal)
- *   ├──dispose()────────> DISPOSED      (terminal)
- *   ├──markPortionedOut()> PORTIONED_OUT (terminal, Fridge가 자식 생성)
- *   └──moveTo(section)──> ACTIVE        (sectionType만 변경)
+ * <h2>생성 경로</h2>
+ * <ul>
+ *   <li>일반 아이템: {@link Fridge#fill} → {@link #create} (package-private)</li>
+ *   <li>소분 자식: {@link Fridge#portion} → {@link #createPortioned} (package-private)</li>
+ *   <li>요리 결과: {@link Fridge#cook} → {@link #create} (package-private)</li>
+ * </ul>
+ *
+ * <h2>역정규화 필드: memberId</h2>
+ * {@code member_id}를 FridgeItem에 직접 보관한다.
+ * Saving BC 이벤트 발행 시 Fridge JOIN 없이 memberId를 알 수 있어야 하기 때문이다.
+ *
+ * <h2>연관관계 Owner</h2>
+ * FridgeItem이 FridgeSection의 연관관계 owner이다.
+ * {@code fridge_section_id} FK는 이 클래스가 관리하며,
+ * {@link FridgeSection#items}는 {@code mappedBy = "fridgeSection"}으로 역방향 참조한다.
+ *
+ * @author 승훈
+ * @since 2025-04-20
+ * @see Fridge#fill
+ * @see Fridge#portion
+ * @see ItemStatus
+ * @see FridgeDomainEvent.FridgeItemConsumedEvent
  */
 @Entity
 @Table(

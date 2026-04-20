@@ -7,6 +7,34 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * 냉장고 구역 Entity.
+ *
+ * <h2>책임</h2>
+ * <ul>
+ *   <li>상온·냉장·냉동 3개 구역 중 하나를 나타내며, 해당 구역의 FridgeItem 목록을 소유한다.</li>
+ *   <li>Fridge 생성 시 3개의 FridgeSection이 자동 생성된다 ({@link #create} 참조).</li>
+ * </ul>
+ *
+ * <h2>식별자 전략</h2>
+ * {@code fridgeSectionId = fridgeId + ":" + sectionType.name()}
+ * UUID 없이 복합 의미 키를 사용한다 — 구역은 냉장고당 항상 3개 고정이므로 별도 생성이 불필요.
+ *
+ * <h2>아이템 관리 규칙</h2>
+ * {@link #addItem}은 package-private이다.
+ * Fridge의 비즈니스 메서드(fill, portion, cook)를 통해서만 호출된다.
+ * 조회 전용 메서드:
+ * <ul>
+ *   <li>{@link #activeItems()} — ACTIVE 아이템 목록 (UI 렌더링용)</li>
+ *   <li>{@link #allItems()} — 전체 아이템 (관리/감사 목적)</li>
+ * </ul>
+ *
+ * @author 승훈
+ * @since 2025-04-20
+ * @see Fridge#create
+ * @see FridgeItem
+ * @see SectionType
+ */
 @Entity
 @Table(name = "fridge_section", schema = "fridge_schema")
 public class FridgeSection {
