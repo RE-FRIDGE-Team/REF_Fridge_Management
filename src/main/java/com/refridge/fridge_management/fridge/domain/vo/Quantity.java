@@ -8,6 +8,21 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
+/**
+ * 수량 값 객체(Value Object).
+ *
+ * <h2>단위 체계</h2>
+ * {@link QuantityUnit}: G(그램), KG, ML, L, EA(개), PACK(팩), PIECE(조각), SERVING(인분)
+ * 소분({@link #divideBy}) 시 같은 단위가 유지된다.
+ *
+ * <h2>소분 연산</h2>
+ * {@code divideBy(n)}은 amount를 n등분한 새 Quantity를 반환한다.
+ * 결과 수량이 0 이하이면 예외를 던진다 (예: 0.5g 아이템을 2등분 시도 → 0.25g → 허용).
+ *
+ * @author 승훈
+ * @since 2025-06-01
+ * @see com.refridge.fridge_management.fridge.domain.Fridge#portion(String, int) 
+ */
 @Embeddable
 public class Quantity {
 
