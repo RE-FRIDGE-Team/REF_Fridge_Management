@@ -6,8 +6,23 @@ import jakarta.persistence.Enumerated;
 import java.util.Objects;
 
 /**
- * core_server GroceryItem 스냅샷 VO.
- * core_server 변경과 무관하게 냉장고 아이템 이력 보존.
+ * core_server GroceryItem 스냅샷 값 객체(Value Object).
+ *
+ * <h2>스냅샷 이유</h2>
+ * core_server의 GroceryItem은 독립적으로 변경될 수 있다.
+ * (예: 상품명 수정, 카테고리 재분류)
+ * 냉장고 이력의 정합성을 위해 저장 시점의 정보를 비정규화하여 보관한다.
+ * FK 조인 없이 이벤트에 필요한 정보를 자급자족한다.
+ *
+ * <h2>소분 정책 필드</h2>
+ * {@code minPortionAmount}, {@code maxPortionAmount}는
+ * core_server portionPolicy에서 복사된 값으로,
+ * {@link com.refridge.fridge_management.fridge.domain.Fridge#portion} 시 소분 단위 검증에 사용된다.
+ *
+ * @author 승훈
+ * @since 2025-06-01
+ * @see com.refridge.fridge_management.fridge.domain.Fridge#portion
+ * @see com.refridge.fridge_management.fridge.domain.event.FridgeDomainEvent.FridgeItemConsumedEvent
  */
 @Embeddable
 public class GroceryItemRef {

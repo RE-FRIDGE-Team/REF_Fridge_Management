@@ -6,6 +6,26 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
+/**
+ * 금액 값 객체(Value Object).
+ *
+ * <h2>불변식</h2>
+ * <ul>
+ *   <li>amount는 항상 0 이상 (음수 불허).</li>
+ *   <li>내부적으로 원(KRW) 단위, 소수점 없이 반올림 저장 (scale=0, HALF_UP).</li>
+ * </ul>
+ *
+ * <h2>연산</h2>
+ * 모든 산술 연산({@link #add}, {@link #subtract}, {@link #proportionalTo})은
+ * 새 Money 인스턴스를 반환하며 기존 인스턴스를 변경하지 않는다.
+ * {@code subtract}는 결과가 음수이면 즉시 예외를 던진다.
+ * {@code proportionalTo}는 소분 시 구매가격을 비례 분할하는 데 사용된다.
+ *
+ * @author 승훈
+ * @since 2025-04-20
+ * @see FridgeMeta
+ * @see Quantity#divideBy
+ */
 @Embeddable
 public class Money {
 

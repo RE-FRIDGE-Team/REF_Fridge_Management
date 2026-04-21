@@ -1,5 +1,23 @@
 package com.refridge.fridge_management.fridge.domain.vo;
 
+
+/**
+ * 냉장고 구역 유형 열거형.
+ *
+ * <h2>온도 순서</h2>
+ * temperatureOrder가 높을수록 낮은 온도:
+ * ROOM_TEMPERATURE(0) < REFRIGERATED(1) < FREEZER(2)
+ *
+ * <h2>상행성 이동</h2>
+ * "냉동 → 냉장 → 상온" 방향(온도 상승)이 상행성(upward move)이며,
+ * 식품 안전 위험이 있어 경고 이벤트가 발행된다.
+ * 판단: {@code from.temperatureOrder > to.temperatureOrder}
+ *
+ * @author 승훈
+ * @since 2025-06-01
+ * @see com.refridge.fridge_management.fridge.domain.policy.UpwardMoveWarningPolicy
+ * @see com.refridge.fridge_management.fridge.domain.event.FridgeDomainEvent.FridgeItemMovedEvent#wasUpwardMove
+ */
 public enum SectionType {
 
     ROOM_TEMPERATURE(0, "상온"),

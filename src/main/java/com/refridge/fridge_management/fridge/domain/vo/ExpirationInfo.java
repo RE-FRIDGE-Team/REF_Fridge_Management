@@ -6,6 +6,25 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
+/**
+ * 유통기한 정보 값 객체(Value Object).
+ *
+ * <h2>연장 규칙</h2>
+ * <ul>
+ *   <li>연장은 1회만 가능하다 ({@code shelfLifeExtended} 플래그 확인).</li>
+ *   <li>연장 후 originalExpiresAt에 원래 만료일이 보존된다.</li>
+ *   <li>{@link #extend(int)}는 새 불변 인스턴스를 반환한다.</li>
+ * </ul>
+ *
+ * <h2>임박 판단 기준</h2>
+ * {@link #isNearExpiry}: {@code 0 ≤ daysUntilExpiry ≤ thresholdDays} (당일 포함, 만료일 당일 = 0일)
+ * {@link #isExpired}: {@code daysUntilExpiry < 0}
+ *
+ * @author 승훈
+ * @since 2025-04-21
+ * @see com.refridge.fridge_management.fridge.domain.Fridge#extend(String, int, LocalDate) 
+ * @see com.refridge.fridge_management.fridge.domain.Fridge#registerNearExpiryEvents(LocalDate, int) 
+ */
 @Embeddable
 public class ExpirationInfo {
 
