@@ -4,6 +4,10 @@ import com.refridge.fridge_management.fridge.domain.event.FridgeDomainEvent;
 import com.refridge.fridge_management.fridge.domain.event.FridgeDomainEvent.ItemProcessingType;
 import com.refridge.fridge_management.fridge.domain.vo.*;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
@@ -37,6 +41,11 @@ import java.util.UUID;
  * {@code member_id}를 FridgeItem에 직접 보관한다.
  * Saving BC 이벤트 발행 시 Fridge JOIN 없이 memberId를 알 수 있어야 하기 때문이다.
  *
+ * <h2>fridgeId (FK 컬럼, 연관관계 없음)</h2>
+ * {@code fridge_id}를 연관관계(@ManyToOne Fridge) 대신 단순 FK 컬럼으로 보관한다.
+ * memberId 역정규화로 Fridge 역참조가 필요한 비즈니스 케이스가 없으므로
+ * 불필요한 Hibernate 프록시 로딩을 제거한다.
+ *
  * <h2>연관관계 Owner</h2>
  * FridgeItem이 FridgeSection의 연관관계 owner이다.
  * {@code fridge_section_id} FK는 이 클래스가 관리하며,
@@ -59,6 +68,8 @@ import java.util.UUID;
                 @Index(name = "idx_fi_member_status",  columnList = "member_id, status, expires_at")
         }
 )
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FridgeItem {
 
     @Id
@@ -73,9 +84,13 @@ public class FridgeItem {
     @Column(name = "member_id", nullable = false, updatable = false, length = 36)
     private String memberId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "fridge_id", nullable = false, updatable = false)
-    private Fridge fridge;
+    /**
+     * fridge_id FK 컬럼 (연관관계 없음).
+     * Fridge 역참조가 필요한 비즈니스 케이스가 없으므로 단순 컬럼으로 보관한다.
+     * (memberId 역정규화로 이벤트 발행에 충분)
+     */
+    @Column(name = "fridge_id", nullable = false, updatable = false, length = 36)
+    private String fridgeId;
 
     /**
      * FridgeSection 연관관계 owner.
@@ -134,22 +149,18 @@ public class FridgeItem {
     private String parentFridgeItemId;
 
     @Version
-    @Column(name = "version")
+    @Column(name = "version", nullable = false)
     private Long version;
-
-    // ── 생성자: JPA 전용 ─────────────────────────────────────────────
-
-    /** JPA 프록시 전용. 도메인 코드에서 직접 호출 금지. */
-    protected FridgeItem() {}
 
     // ── 팩토리: package-private (Fridge에서만 호출 가능) ──────────────
 
     /**
      * 일반 아이템 생성. {@link Fridge#fill}에서만 호출.
-     * fridgeSection 파라미터가 추가됨 — FridgeSection.items 연관관계 owner 세팅.
+     * fridgeSection 파라미터 — FridgeSection.items 연관관계 owner 세팅.
+     * fridgeId 파라미터 — fridge FK 컬럼 (연관관계 없음).
      */
     static FridgeItem create(
-            Fridge fridge,
+            String fridgeId,
             FridgeSection fridgeSection,
             String memberId,
             GroceryItemRef groceryItemRef,
@@ -161,7 +172,7 @@ public class FridgeItem {
     ) {
         FridgeItem item = new FridgeItem();
         item.fridgeItemId     = UUID.randomUUID().toString();
-        item.fridge           = Objects.requireNonNull(fridge, "fridge");
+        item.fridgeId         = Objects.requireNonNull(fridgeId, "fridgeId");
         item.fridgeSection    = Objects.requireNonNull(fridgeSection, "fridgeSection");
         item.memberId         = Objects.requireNonNull(memberId, "memberId");
         item.groceryItemRef   = Objects.requireNonNull(groceryItemRef, "groceryItemRef");
@@ -179,7 +190,7 @@ public class FridgeItem {
      * 소분 자식 아이템 생성. {@link Fridge#portion}에서만 호출.
      */
     static FridgeItem createPortioned(
-            Fridge fridge,
+            String fridgeId,
             FridgeSection fridgeSection,
             String memberId,
             String parentId,
@@ -190,7 +201,7 @@ public class FridgeItem {
             SectionType section,
             ItemProcessingType procType
     ) {
-        FridgeItem item = create(fridge, fridgeSection, memberId, groceryItemRef,
+        FridgeItem item = create(fridgeId, fridgeSection, memberId, groceryItemRef,
                 qty, price, expInfo, section, procType);
         item.parentFridgeItemId = Objects.requireNonNull(parentId, "parentId");
         return item;
@@ -244,20 +255,6 @@ public class FridgeItem {
     public boolean isActive()                            { return status.isActive(); }
     public boolean isNearExpiry(LocalDate t, int days)   { return expirationInfo.isNearExpiry(t, days); }
     public boolean isExpired(LocalDate today)            { return expirationInfo.isExpired(today); }
-
-    // ── Getter (public) ───────────────────────────────────────────────
-
-    public String getFridgeItemId()               { return fridgeItemId; }
-    public String getMemberId()                   { return memberId; }
-    public FridgeSection getFridgeSection()       { return fridgeSection; }
-    public GroceryItemRef getGroceryItemRef()     { return groceryItemRef; }
-    public Quantity getQuantity()                 { return quantity; }
-    public Money getPurchasePrice()               { return purchasePrice; }
-    public ExpirationInfo getExpirationInfo()     { return expirationInfo; }
-    public SectionType getSectionType()           { return sectionType; }
-    public ItemStatus getStatus()                 { return status; }
-    public ItemProcessingType getProcessingType() { return processingType; }
-    public String getParentFridgeItemId()         { return parentFridgeItemId; }
 
     // ── private ───────────────────────────────────────────────────────
 

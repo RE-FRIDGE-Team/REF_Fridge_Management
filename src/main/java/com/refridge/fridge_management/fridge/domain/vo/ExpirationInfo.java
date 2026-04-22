@@ -1,6 +1,9 @@
 package com.refridge.fridge_management.fridge.domain.vo;
 
 import jakarta.persistence.Embeddable;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -21,20 +24,19 @@ import java.util.Objects;
  * {@link #isExpired}: {@code daysUntilExpiry < 0}
  *
  * @author 승훈
- * @since 2025-04-21
- * @see com.refridge.fridge_management.fridge.domain.Fridge#extend(String, int, LocalDate) 
- * @see com.refridge.fridge_management.fridge.domain.Fridge#registerNearExpiryEvents(LocalDate, int) 
+ * @since 2026-04-21
+ * @see com.refridge.fridge_management.fridge.domain.Fridge#extend(String, int, LocalDate)
+ * @see com.refridge.fridge_management.fridge.domain.Fridge#registerNearExpiryEvents(LocalDate, int)
  */
 @Embeddable
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExpirationInfo {
 
     private LocalDate manufacturedAt;
     private LocalDate expiresAt;
     private boolean shelfLifeExtended;
     private LocalDate originalExpiresAt;
-
-    protected ExpirationInfo() {
-    }
 
     private ExpirationInfo(LocalDate manufacturedAt, LocalDate expiresAt,
                            boolean extended, LocalDate originalExpiresAt) {
@@ -74,22 +76,6 @@ public class ExpirationInfo {
 
     public boolean isExpired(LocalDate today) {
         return daysUntilExpiry(today) < 0;
-    }
-
-    public LocalDate getManufacturedAt() {
-        return manufacturedAt;
-    }
-
-    public LocalDate getExpiresAt() {
-        return expiresAt;
-    }
-
-    public boolean isShelfLifeExtended() {
-        return shelfLifeExtended;
-    }
-
-    public LocalDate getOriginalExpiresAt() {
-        return originalExpiresAt;
     }
 
     @Override

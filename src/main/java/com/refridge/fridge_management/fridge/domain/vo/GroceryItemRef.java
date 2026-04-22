@@ -20,7 +20,7 @@ import java.util.Objects;
  * {@link com.refridge.fridge_management.fridge.domain.Fridge#portion} 시 소분 단위 검증에 사용된다.
  *
  * @author 승훈
- * @since 2025-06-01
+ * @since 2025-04-21
  * @see com.refridge.fridge_management.fridge.domain.Fridge#portion
  * @see com.refridge.fridge_management.fridge.domain.event.FridgeDomainEvent.FridgeItemConsumedEvent
  */

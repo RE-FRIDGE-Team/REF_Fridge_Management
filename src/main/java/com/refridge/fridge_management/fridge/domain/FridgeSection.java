@@ -2,6 +2,11 @@ package com.refridge.fridge_management.fridge.domain;
 
 import com.refridge.fridge_management.fridge.domain.vo.SectionType;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +41,13 @@ import java.util.Objects;
  * @see SectionType
  */
 @Entity
-@Table(name = "fridge_section", schema = "fridge_schema")
+@Table(
+        name = "fridge_section",
+        schema = "fridge_schema",
+        indexes = @Index(name = "idx_fs_fridge_id", columnList = "fridge_id")
+)
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FridgeSection {
 
     @Id
@@ -54,11 +65,13 @@ public class FridgeSection {
     /**
      * mappedBy = "fridgeSection" — FridgeItem.fridgeSection 이 연관관계 owner.
      * FridgeItem 쪽 @ManyToOne(fridgeSection)의 FK(fridge_section_id)로 관리됨.
+     *
+     * LAZY + @BatchSize(20): items 개수가 가변이고 조회 시나리오마다 필요 여부가 다름.
+     * 여러 FridgeSection을 한 번에 로드할 때 @BatchSize가 N+1을 IN 절로 해결.
      */
     @OneToMany(mappedBy = "fridgeSection", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
     private List<FridgeItem> items = new ArrayList<>();
-
-    protected FridgeSection() {}
 
     /** package-private — Fridge.create()에서만 호출 */
     static FridgeSection create(Fridge fridge, SectionType sectionType) {
@@ -85,9 +98,6 @@ public class FridgeSection {
     public List<FridgeItem> allItems() { return Collections.unmodifiableList(items); }
 
     public long activeItemCount() { return items.stream().filter(FridgeItem::isActive).count(); }
-
-    public String getFridgeSectionId() { return fridgeSectionId; }
-    public SectionType getSectionType() { return sectionType; }
 
     @Override public boolean equals(Object o) {
         if (this == o) return true;

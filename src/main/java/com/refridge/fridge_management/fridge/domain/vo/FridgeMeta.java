@@ -1,6 +1,10 @@
 package com.refridge.fridge_management.fridge.domain.vo;
 
 import jakarta.persistence.Embeddable;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.util.Objects;
 
 /**
@@ -20,19 +24,16 @@ import java.util.Objects;
  * 도메인 로직 외부에서 직접 조작하면 불변식이 깨질 수 있다.
  *
  * @author 승훈
- * @since 2025-06-01
+ * @since 2026-04-21
  * @see com.refridge.fridge_management.fridge.domain.Fridge#fridgeMeta
  */
 @Embeddable
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FridgeMeta {
 
     private Money totalValue;
     private int activeItemCount;
-
-    protected FridgeMeta() {
-        this.totalValue      = Money.ZERO;
-        this.activeItemCount = 0;
-    }
 
     private FridgeMeta(Money totalValue, int activeItemCount) {
         if (activeItemCount < 0)
@@ -50,9 +51,6 @@ public class FridgeMeta {
     public FridgeMeta removeItem(Money price) {
         return new FridgeMeta(totalValue.subtract(price), activeItemCount - 1);
     }
-
-    public Money getTotalValue()    { return totalValue; }
-    public int getActiveItemCount() { return activeItemCount; }
 
     @Override public boolean equals(Object o) {
         if (this == o) return true;

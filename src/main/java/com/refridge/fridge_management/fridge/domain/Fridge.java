@@ -6,7 +6,11 @@ import com.refridge.fridge_management.fridge.domain.event.FridgeDomainEvent.Item
 import com.refridge.fridge_management.fridge.domain.policy.UpwardMoveWarningPolicy;
 import com.refridge.fridge_management.fridge.domain.vo.*;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.springframework.data.domain.AbstractAggregateRoot;
+
 import java.time.LocalDate;
 import java.util.*;
 
@@ -48,7 +52,7 @@ import java.util.*;
  * 외부 레이어(Application Service)는 반드시 Fridge의 도메인 메서드를 통해서만 아이템을 조작해야 한다.
  *
  * @author 승훈
- * @since 2025-04.20
+ * @since 2025-06-01
  * @see FridgeSection
  * @see FridgeItem
  * @see FridgeDomainEvent
@@ -60,6 +64,8 @@ import java.util.*;
         schema = "fridge_schema",
         uniqueConstraints = @UniqueConstraint(name = "uq_fridge_member_id", columnNames = "member_id")
 )
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Fridge extends AbstractAggregateRoot<Fridge> {
 
     private static final UpwardMoveWarningPolicy UPWARD_MOVE_POLICY = new UpwardMoveWarningPolicy();
@@ -74,21 +80,23 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
     /** 집계 불변식 VO — totalValue + activeItemCount */
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "totalValue.amount",  column = @Column(name = "total_value",      nullable = false)),
-            @AttributeOverride(name = "activeItemCount",    column = @Column(name = "active_item_count", nullable = false))
+            @AttributeOverride(name = "totalValue.amount",  column = @Column(name = "total_value",       nullable = false)),
+            @AttributeOverride(name = "activeItemCount",    column = @Column(name = "active_item_count",  nullable = false))
     })
     private FridgeMeta fridgeMeta;
 
-    @OneToMany(mappedBy = "fridge", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    /**
+     * sections는 항상 3개(ROOM_TEMPERATURE / REFRIGERATED / FREEZER)이고
+     * 모든 AR 도메인 메서드(fill, consume, move 등)가 반드시 접근하므로 EAGER 로딩.
+     * EAGER이므로 @BatchSize 불필요 (JOIN으로 한 번에 로드).
+     */
+    @OneToMany(mappedBy = "fridge", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @MapKey(name = "sectionType")
     private Map<SectionType, FridgeSection> sections = new EnumMap<>(SectionType.class);
 
     @Version
-    @Column(name = "version")
+    @Column(name = "version", nullable = false)
     private Long version;
-
-    // ── JPA 전용 기본 생성자 ──────────────────────────────────────────
-    protected Fridge() {}
 
     // ── 팩토리 ────────────────────────────────────────────────────────
 
@@ -124,12 +132,10 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
             SectionType sectionType,
             ItemProcessingType processingType
     ) {
-        // section을 먼저 꺼내서 FridgeItem.create()에 전달
-        // → FridgeItem.fridgeSection(연관관계 owner) 세팅
         FridgeSection section = requireSection(sectionType);
 
         FridgeItem item = FridgeItem.create(
-                this, section, memberId,
+                this.fridgeId, section, memberId,
                 groceryItemRef, quantity, purchasePrice,
                 expirationInfo, sectionType, processingType);
 
@@ -206,13 +212,12 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
         Money portionPrice  = original.getPurchasePrice()
                 .proportionalTo(portionQty.getAmount(), original.getQuantity().getAmount());
 
-        // 원본 아이템의 section을 그대로 사용
         FridgeSection section = requireSection(original.getSectionType());
 
         List<FridgeItem> portionedItems = new ArrayList<>(portionCount);
         for (int i = 0; i < portionCount; i++) {
             FridgeItem child = FridgeItem.createPortioned(
-                    this, section, memberId, fridgeItemId,
+                    this.fridgeId, section, memberId, fridgeItemId,
                     original.getGroceryItemRef(), portionQty, portionPrice,
                     original.getExpirationInfo(), original.getSectionType(), original.getProcessingType());
             section.addItem(child);
@@ -273,7 +278,7 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
         FridgeSection section = requireSection(targetSection);
         Quantity cookedQty    = Quantity.of(servings, Quantity.QuantityUnit.SERVING);
         FridgeItem cookedItem = FridgeItem.create(
-                this, section, memberId,
+                this.fridgeId, section, memberId,
                 cookedGroceryRef, cookedQty, totalPrice,
                 cookedExpiresAt, targetSection, ItemProcessingType.COOKED);
 
@@ -329,12 +334,6 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
                         "소분 단위(%dg)가 최소 소분 단위(%dg) 미만.".formatted(portionAmount, min));
         }
     }
-
-    // ── Getter ─────────────────────────────────────────────────────────
-
-    public String getFridgeId()       { return fridgeId; }
-    public String getMemberId()       { return memberId; }
-    public FridgeMeta getFridgeMeta() { return fridgeMeta; }
 
     public Map<SectionType, FridgeSection> getSections() {
         return Collections.unmodifiableMap(sections);

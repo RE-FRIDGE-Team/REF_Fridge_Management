@@ -17,7 +17,7 @@ import java.util.Set;
  * {@link com.refridge.fridge_management.fridge.domain.FridgeItem}의 {@code assertActive()} 메서드가 이를 강제한다.
  *
  * @author 승훈
- * @since 2025-06-01
+ * @since 2025-04-21
  * @see com.refridge.fridge_management.fridge.domain.FridgeItem
  */
 public enum ItemStatus {
