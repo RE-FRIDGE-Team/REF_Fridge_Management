@@ -3,6 +3,9 @@ package com.refridge.fridge_management.fridge.domain.vo;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -20,19 +23,18 @@ import java.util.Objects;
  * 결과 수량이 0 이하이면 예외를 던진다 (예: 0.5g 아이템을 2등분 시도 → 0.25g → 허용).
  *
  * @author 승훈
- * @since 2025-06-01
- * @see com.refridge.fridge_management.fridge.domain.Fridge#portion(String, int) 
+ * @since 2026-04-21
+ * @see com.refridge.fridge_management.fridge.domain.Fridge#portion(String, int)
  */
 @Embeddable
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Quantity {
 
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
     private QuantityUnit unit;
-
-    protected Quantity() {
-    }
 
     private Quantity(BigDecimal amount, QuantityUnit unit) {
         if (amount == null || unit == null)
@@ -60,14 +62,6 @@ public class Quantity {
         if (portionAmount.compareTo(BigDecimal.ZERO) <= 0)
             throw new IllegalArgumentException("소분 결과 수량이 0 이하: amount=%s, portions=%d".formatted(amount, portions));
         return new Quantity(portionAmount, unit);
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public QuantityUnit getUnit() {
-        return unit;
     }
 
     @Override

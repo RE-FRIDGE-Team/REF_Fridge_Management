@@ -1,6 +1,8 @@
 package com.refridge.fridge_management.fridge.domain.vo;
 
 import jakarta.persistence.Embeddable;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -22,20 +24,19 @@ import java.util.Objects;
  * {@code proportionalTo}는 소분 시 구매가격을 비례 분할하는 데 사용된다.
  *
  * @author 승훈
- * @since 2025-04-20
+ * @since 2026-04-20
  * @see FridgeMeta
  * @see Quantity#divideBy
  */
 @Embeddable
+// JPA @Embeddable은 protected no-args 생성자 필요.
+// @Builder를 Money에 쓸 경우 외부에서 유효성 검증 없이 인스턴스 생성 가능 → of() 팩토리로 통제.
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Money {
 
     public static final Money ZERO = new Money(BigDecimal.ZERO);
 
     private BigDecimal amount;
-
-    protected Money() {
-        this.amount = BigDecimal.ZERO;
-    }
 
     private Money(BigDecimal amount) {
         if (amount == null) throw new IllegalArgumentException("amount must not be null");

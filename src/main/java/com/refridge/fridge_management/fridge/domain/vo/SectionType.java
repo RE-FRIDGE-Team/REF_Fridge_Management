@@ -1,6 +1,5 @@
 package com.refridge.fridge_management.fridge.domain.vo;
 
-
 /**
  * 냉장고 구역 유형 열거형.
  *
@@ -14,7 +13,7 @@ package com.refridge.fridge_management.fridge.domain.vo;
  * 판단: {@code from.temperatureOrder > to.temperatureOrder}
  *
  * @author 승훈
- * @since 2025-06-01
+ * @since 2026-04-21
  * @see com.refridge.fridge_management.fridge.domain.policy.UpwardMoveWarningPolicy
  * @see com.refridge.fridge_management.fridge.domain.event.FridgeDomainEvent.FridgeItemMovedEvent#wasUpwardMove
  */

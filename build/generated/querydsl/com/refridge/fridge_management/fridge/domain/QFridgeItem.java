@@ -24,7 +24,7 @@ public class QFridgeItem extends EntityPathBase<FridgeItem> {
 
     public final com.refridge.fridge_management.fridge.domain.vo.QExpirationInfo expirationInfo;
 
-    public final QFridge fridge;
+    public final StringPath fridgeId = createString("fridgeId");
 
     public final StringPath fridgeItemId = createString("fridgeItemId");
 
@@ -67,7 +67,6 @@ public class QFridgeItem extends EntityPathBase<FridgeItem> {
     public QFridgeItem(Class<? extends FridgeItem> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
         this.expirationInfo = inits.isInitialized("expirationInfo") ? new com.refridge.fridge_management.fridge.domain.vo.QExpirationInfo(forProperty("expirationInfo")) : null;
-        this.fridge = inits.isInitialized("fridge") ? new QFridge(forProperty("fridge"), inits.get("fridge")) : null;
         this.fridgeSection = inits.isInitialized("fridgeSection") ? new QFridgeSection(forProperty("fridgeSection"), inits.get("fridgeSection")) : null;
         this.groceryItemRef = inits.isInitialized("groceryItemRef") ? new com.refridge.fridge_management.fridge.domain.vo.QGroceryItemRef(forProperty("groceryItemRef")) : null;
         this.purchasePrice = inits.isInitialized("purchasePrice") ? new com.refridge.fridge_management.fridge.domain.vo.QMoney(forProperty("purchasePrice")) : null;
