@@ -68,6 +68,11 @@ dependencies {
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
 
+    // ── Lombok ───────────────────────────────────────────────────────
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.projectlombok:lombok'
+
     // ── QueryDSL 5.1.0 (jakarta) ─────────────────────────────────────
     implementation "com.querydsl:querydsl-jpa:${queryDslVersion}:jakarta"
     annotationProcessor "com.querydsl:querydsl-apt:${queryDslVersion}:jakarta"
@@ -79,11 +84,6 @@ dependencies {
 
     // ── Micrometer / Prometheus ───────────────────────────────────────
     implementation 'io.micrometer:micrometer-registry-prometheus'
-
-    // ── Lombok ───────────────────────────────────────────────────────
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    annotationProcessor 'org.projectlombok:lombok'
 
     // ── Dev Tools ────────────────────────────────────────────────────
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
