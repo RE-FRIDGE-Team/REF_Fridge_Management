@@ -1,59 +1,24 @@
--- fridge_schema 생성 (Docker init-schemas.sql에서 이미 했다면 생략 가능)
-CREATE SCHEMA IF NOT EXISTS fridge_schema;
+-- ============================================================
+-- V1: fridge_schema(database) 생성
+--
+-- 목적:
+--   fridge_server 전용 MySQL 데이터베이스를 격리 생성한다.
+--   MySQL에서 SCHEMA = DATABASE이므로 CREATE SCHEMA와 동일하다.
+--   core_server(포트 3306, DB: ref_core)와 완전히 분리된
+--   별도 포트(3307)의 별도 DB로 운영한다.
+--
+-- 실행 시점:
+--   앱 기동 시 Flyway가 flyway_schema_history 테이블을 확인하고
+--   아직 적용되지 않은 버전을 순서대로 자동 실행한다.
+--   이미 적용된 스크립트는 체크섬 검증 후 건너뛴다.
+--
+-- 주의:
+--   한 번 적용된 이 파일은 절대 수정하지 않는다.
+--   스키마 변경이 필요하면 V2, V3... 새 파일을 추가한다.
+--
+-- 작성: 승훈 / 2025-06-01
+-- ============================================================
 
--- fridge 테이블
-CREATE TABLE fridge_schema.fridge (
-                                      fridge_id           VARCHAR(36)    NOT NULL,
-                                      member_id           VARCHAR(36)    NOT NULL,
-                                      total_value         NUMERIC(19,0)  NOT NULL DEFAULT 0,
-                                      active_item_count   INTEGER        NOT NULL DEFAULT 0,
-                                      version             BIGINT,
-                                      CONSTRAINT pk_fridge PRIMARY KEY (fridge_id),
-                                      CONSTRAINT uq_fridge_member_id UNIQUE (member_id)
-);
-
--- fridge_section 테이블
-CREATE TABLE fridge_schema.fridge_section (
-                                              fridge_section_id   VARCHAR(80)    NOT NULL,
-                                              fridge_id           VARCHAR(36)    NOT NULL,
-                                              section_type        VARCHAR(20)    NOT NULL,
-                                              CONSTRAINT pk_fridge_section PRIMARY KEY (fridge_section_id),
-                                              CONSTRAINT fk_fridge_section_fridge FOREIGN KEY (fridge_id)
-                                                  REFERENCES fridge_schema.fridge (fridge_id)
-);
-
--- fridge_item 테이블
-CREATE TABLE fridge_schema.fridge_item (
-                                           fridge_item_id          VARCHAR(36)    NOT NULL,
-                                           member_id               VARCHAR(36)    NOT NULL,
-                                           fridge_id               VARCHAR(36)    NOT NULL,
-                                           fridge_section_id       VARCHAR(80)    NOT NULL,
-                                           grocery_item_id         VARCHAR(255),
-                                           product_id              VARCHAR(255),
-                                           grocery_item_name       VARCHAR(255),
-                                           grocery_item_category   VARCHAR(50),
-                                           grocery_item_default_unit VARCHAR(20),
-                                           min_portion_amount      INTEGER,
-                                           max_portion_amount      INTEGER,
-                                           quantity_amount         NUMERIC(10,2)  NOT NULL,
-                                           quantity_unit           VARCHAR(20)    NOT NULL,
-                                           purchase_price          NUMERIC(19,0)  NOT NULL,
-                                           manufactured_at         DATE,
-                                           expires_at              DATE           NOT NULL,
-                                           shelf_life_extended     BOOLEAN        NOT NULL DEFAULT FALSE,
-                                           original_expires_at     DATE,
-                                           section_type            VARCHAR(20)    NOT NULL,
-                                           status                  VARCHAR(20)    NOT NULL,
-                                           processing_type         VARCHAR(20)    NOT NULL,
-                                           parent_fridge_item_id   VARCHAR(36),
-                                           version                 BIGINT,
-                                           CONSTRAINT pk_fridge_item PRIMARY KEY (fridge_item_id),
-                                           CONSTRAINT fk_fridge_item_fridge FOREIGN KEY (fridge_id)
-                                               REFERENCES fridge_schema.fridge (fridge_id),
-                                           CONSTRAINT fk_fridge_item_section FOREIGN KEY (fridge_section_id)
-                                               REFERENCES fridge_schema.fridge_section (fridge_section_id)
-);
-
-CREATE INDEX idx_fi_fridge_status  ON fridge_schema.fridge_item (fridge_id, status);
-CREATE INDEX idx_fi_expires_at     ON fridge_schema.fridge_item (expires_at);
-CREATE INDEX idx_fi_member_status  ON fridge_schema.fridge_item (member_id, status, expires_at);
+CREATE DATABASE IF NOT EXISTS fridge_schema
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
