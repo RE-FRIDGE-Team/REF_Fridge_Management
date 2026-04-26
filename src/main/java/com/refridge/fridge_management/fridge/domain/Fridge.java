@@ -18,47 +18,29 @@ import java.util.*;
  * 냉장고 Aggregate Root.
  *
  * <h2>책임</h2>
+ * 냉장고 내 모든 식품(FridgeItem) 생명주기를 단일 트랜잭션 경계 안에서 관리한다.
  * <ul>
- *   <li>냉장고 내 모든 식품(FridgeItem) 생명주기를 단일 트랜잭션 경계 안에서 관리한다.</li>
  *   <li>불변식: {@code fridgeMeta.totalValue == ∑ ACTIVE FridgeItem.purchasePrice}</li>
- *   <li>불변식: {@code fridgeMeta.activeItemCount == ACTIVE 상태 FridgeItem 개수}</li>
- *   <li>회원당 냉장고는 정확히 1개 ({@code uq_fridge_member_id}).</li>
+ *   <li>불변식: {@code fridgeMeta.activeItemCount == ACTIVE FridgeItem 개수}</li>
+ *   <li>회원당 냉장고는 정확히 1개.</li>
  * </ul>
  *
- * <h2>생성</h2>
- * 외부에서 new Fridge()를 직접 호출하는 것은 금지되어 있다.
- * 유일한 생성 경로는 {@link #create(String)} 팩토리 메서드이며,
- * 이 때 상온·냉장·냉동 3개 구역이 자동으로 초기화된다.
- *
- * <h2>도메인 연산 — 진입점</h2>
+ * <h2>도메인 연산 진입점</h2>
  * <pre>
- *   Fridge.fill(...)                       → 아이템 추가 (Recognition 완료 후)
- *   Fridge.registerFillCompletedEvent(...) → 채우기 완료 이벤트 등록 (Feedback BC 연동)
- *   Fridge.consume(id)                     → 먹기  → FridgeItemConsumedEvent
- *   Fridge.dispose(id)                     → 폐기  → FridgeItemDisposedEvent
- *   Fridge.move(id, section)               → 구역 이동 → FridgeItemMovedEvent
- *   Fridge.portion(id, n)                  → 소분  → 자식 FridgeItem n개 생성
- *   Fridge.extend(id, days)                → 기한 연장 (임박·만료 아이템 한정)
- *   Fridge.cook(...)                       → 즉석 요리 (재료 일괄 소비 + 결과 생성)
- *   Fridge.registerNearExpiryEvents(...)   → 임박 배치용 이벤트 등록
+ *   fill(...)                       → 아이템 추가
+ *   registerFillCompletedEvent(...) → 채우기 완료 이벤트 등록 (Feedback BC 연동)
+ *   registerExpiration(...)         → 소비기한 등록 (채우기 이후 별도 입력)
+ *   consume(id)                     → 먹기
+ *   dispose(id)                     → 폐기
+ *   move(id, section)               → 구역 이동
+ *   portion(id, n)                  → 소분
+ *   extend(id, days, today)         → 소비기한 연장 (횟수 제한 없음)
+ *   cook(...)                       → 즉석 요리
+ *   registerNearExpiryEvents(...)   → 임박 배치용 이벤트 등록
  * </pre>
- *
- * <h2>이벤트 발행</h2>
- * {@link AbstractAggregateRoot}를 상속하므로
- * {@link #registerEvent(Object)}로 등록된 이벤트는
- * {@code FridgeRepository.save()} 완료 직후 Spring ApplicationEventPublisher를 통해 자동 발행된다.
- * Outbox 패턴을 통해 Redis Stream으로 전달됨.
- *
- * <h2>하위 엔티티 접근 제어</h2>
- * {@link FridgeSection#create} 및 {@link FridgeItem#create}는 package-private이다.
- * 외부 레이어(Application Service)는 반드시 Fridge의 도메인 메서드를 통해서만 아이템을 조작해야 한다.
  *
  * @author 승훈
  * @since 2025-06-01
- * @see FridgeSection
- * @see FridgeItem
- * @see FridgeDomainEvent
- * @see com.refridge.fridge_management.fridge.domain.policy.UpwardMoveWarningPolicy
  */
 @Entity
 @Table(
@@ -79,19 +61,13 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
     @Column(name = "member_id", nullable = false, updatable = false, unique = true, length = 36)
     private String memberId;
 
-    /** 집계 불변식 VO — totalValue + activeItemCount */
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "totalValue.amount",  column = @Column(name = "total_value",       nullable = false)),
-            @AttributeOverride(name = "activeItemCount",    column = @Column(name = "active_item_count",  nullable = false))
+            @AttributeOverride(name = "totalValue.amount", column = @Column(name = "total_value",      nullable = false)),
+            @AttributeOverride(name = "activeItemCount",   column = @Column(name = "active_item_count", nullable = false))
     })
     private FridgeMeta fridgeMeta;
 
-    /**
-     * sections는 항상 3개(ROOM_TEMPERATURE / REFRIGERATED / FREEZER)이고
-     * 모든 AR 도메인 메서드(fill, consume, move 등)가 반드시 접근하므로 EAGER 로딩.
-     * EAGER이므로 @BatchSize 불필요 (JOIN으로 한 번에 로드).
-     */
     @OneToMany(mappedBy = "fridge", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @MapKey(name = "sectionType")
     private Map<SectionType, FridgeSection> sections = new EnumMap<>(SectionType.class);
@@ -102,10 +78,6 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
 
     // ── 팩토리 ────────────────────────────────────────────────────────
 
-    /**
-     * 새 냉장고 생성 — 3개 구역(상온/냉장/냉동) 자동 초기화.
-     * 외부에서 Fridge를 생성하는 유일한 방법.
-     */
     public static Fridge create(String memberId) {
         Objects.requireNonNull(memberId, "memberId must not be null");
         Fridge fridge = new Fridge();
@@ -122,61 +94,32 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
 
     /**
      * 아이템 추가 (냉장고 채우기).
-     * Recognition 완료 후 {@code FillFridgeUseCase}가 각 아이템마다 호출한다.
-     * 이 메서드 호출 후 반드시 {@link #registerFillCompletedEvent}를 호출해야
-     * Feedback BC 연동 이벤트가 등록된다.
      *
-     * @param groceryItemRef  최종 확정 식재료 스냅샷 (GroceryItemCatalogPort로 보강된 값)
-     * @param quantity        수량
-     * @param purchasePrice   구매 가격
-     * @param expirationInfo  유통기한 정보
-     * @param sectionType     보관 구역
-     * @param processingType  가공 유형
-     * @return 생성된 FridgeItem (Application 레이어에서 DTO 변환 및 이벤트 등록에 사용)
+     * <h3>소비기한 미설정</h3>
+     * 채우기 시점에는 소비기한을 입력받지 않는다.
+     * {@code ExpirationInfo.unset()}으로 초기화하며,
+     * 이후 {@link #registerExpiration}으로 소비기한을 별도 등록한다.
      */
     public FridgeItem fill(
             GroceryItemRef groceryItemRef,
             Quantity quantity,
             Money purchasePrice,
-            ExpirationInfo expirationInfo,
             SectionType sectionType,
             ItemProcessingType processingType
     ) {
         FridgeSection section = requireSection(sectionType);
-
         FridgeItem item = FridgeItem.create(
                 this.fridgeId, section, memberId,
                 groceryItemRef, quantity, purchasePrice,
-                expirationInfo, sectionType, processingType);
-
+                ExpirationInfo.unset(), sectionType, processingType);
         section.addItem(item);
         fridgeMeta = fridgeMeta.addItem(purchasePrice);
         return item;
     }
 
     /**
-     * 냉장고 채우기 완료 이벤트 등록 (Feedback BC 연동).
-     *
-     * <h2>호출 시점</h2>
-     * {@link #fill}로 FridgeItem을 생성한 직후, 같은 트랜잭션 내에서 호출한다.
-     * {@code FillFridgeUseCase}가 각 아이템마다 fill() → registerFillCompletedEvent() 순서로 호출.
-     *
-     * <h2>이벤트 흐름</h2>
-     * 이 이벤트는 {@code FridgeOutboxAppender}(BEFORE_COMMIT)가 캡처 →
-     * {@code fridge_pending_event} 테이블 INSERT →
-     * {@code FridgeOutboxRelayer}(@Scheduled) →
-     * {@code fridge:fill-completed} Redis Stream →
-     * core_server {@code REFFillEventConsumer} 수신 →
-     * diff 계산 후 {@code approveFeedback()} or {@code correctFeedback()} 호출.
-     *
-     * <h2>recognitionId가 null인 경우</h2>
-     * Recognition을 거치지 않고 직접 입력한 아이템(예: 수동 추가)은
-     * recognitionId가 null이다. Feedback BC의 findOrCreate 멱등 패턴이 이를 처리한다.
-     *
-     * @param recognitionId    Recognition AR ID (직접 입력 시 null)
-     * @param item             방금 fill()로 생성된 FridgeItem
-     * @param finalBrandName   사용자가 최종 입력한 브랜드명 (nullable)
-     * @param userEditedFields 사용자가 수정한 필드 집합 (수정 없으면 빈 Set)
+     * 채우기 완료 이벤트 등록 (Feedback BC 연동).
+     * {@link #fill} 호출 직후 동일 트랜잭션에서 호출한다.
      */
     public void registerFillCompletedEvent(
             UUID recognitionId,
@@ -186,26 +129,37 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
     ) {
         Objects.requireNonNull(item, "item must not be null");
         Objects.requireNonNull(userEditedFields, "userEditedFields must not be null");
-
         registerEvent(FridgeDomainEvent.FridgeFillCompletedEvent.of(
-                memberId,
-                recognitionId,
-                item.getFridgeItemId(),
-                item.getGroceryItemRef(),
-                finalBrandName,
-                item.getQuantity(),
-                item.getPurchasePrice(),
-                userEditedFields
-        ));
+                memberId, recognitionId, item.getFridgeItemId(),
+                item.getGroceryItemRef(), finalBrandName,
+                item.getQuantity(), item.getPurchasePrice(), userEditedFields));
+    }
+
+    // ── 소비기한 등록 ─────────────────────────────────────────────────
+
+    /**
+     * 소비기한 등록 (채우기 이후 사용자 별도 입력).
+     *
+     * <h3>정책</h3>
+     * <ul>
+     *   <li>소비기한이 미설정({@code ExpirationInfo.isExpirationSet()==false})인 아이템에 최초 등록.</li>
+     *   <li>이미 설정된 경우도 수정을 허용한다 (사용자 입력 오류 정정).</li>
+     *   <li>연장 이력({@code extensionCount})은 초기화하지 않는다.</li>
+     * </ul>
+     *
+     * @param fridgeItemId 소비기한을 등록할 아이템 ID
+     * @param expiresAt    등록할 소비기한
+     */
+    public void registerExpiration(String fridgeItemId, LocalDate expiresAt) {
+        Objects.requireNonNull(expiresAt, "expiresAt must not be null");
+        FridgeItem item = requireActiveItem(fridgeItemId);
+        item.registerExpiration(expiresAt);
+        registerEvent(FridgeDomainEvent.FridgeItemExpirationRegisteredEvent.of(
+                memberId, fridgeItemId, expiresAt));
     }
 
     // ── 먹기 ───────────────────────────────────────────────────────────
 
-    /**
-     * 아이템 먹기.
-     * 이벤트: {@link FridgeDomainEvent.FridgeItemConsumedEvent}
-     * → Saving BC가 구독해 절약액 계산.
-     */
     public void consume(String fridgeItemId) {
         FridgeItem item = requireActiveItem(fridgeItemId);
         FridgeDomainEvent.FridgeItemConsumedEvent event = item.consume();
@@ -215,11 +169,6 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
 
     // ── 폐기 ───────────────────────────────────────────────────────────
 
-    /**
-     * 아이템 폐기.
-     * 이벤트: {@link FridgeDomainEvent.FridgeItemDisposedEvent}
-     * → Saving BC가 "낭비된 식비" 누적.
-     */
     public void dispose(String fridgeItemId) {
         FridgeItem item = requireActiveItem(fridgeItemId);
         FridgeDomainEvent.FridgeItemDisposedEvent event = item.dispose();
@@ -229,11 +178,6 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
 
     // ── 구역 이동 ─────────────────────────────────────────────────────
 
-    /**
-     * 구역 간 이동.
-     * 이벤트: {@link FridgeDomainEvent.FridgeItemMovedEvent}
-     * wasUpwardMove=true → UI가 경고 표시.
-     */
     public void move(String fridgeItemId, SectionType targetSection) {
         FridgeItem item  = requireActiveItem(fridgeItemId);
         SectionType from = item.getSectionType();
@@ -246,17 +190,9 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
 
     // ── 소분 ───────────────────────────────────────────────────────────
 
-    /**
-     * 소분.
-     * 원본 PORTIONED_OUT 처리 + 자식 N개 생성.
-     * 이벤트: {@link FridgeDomainEvent.FridgeItemPortionedEvent}
-     *
-     * @return 생성된 자식 FridgeItem 목록
-     */
     public List<FridgeItem> portion(String fridgeItemId, int portionCount) {
         if (portionCount < 2)
             throw new IllegalArgumentException("소분 수는 2 이상이어야 합니다: " + portionCount);
-
         FridgeItem original = requireActiveItem(fridgeItemId);
         validatePortionPolicy(original, portionCount);
 
@@ -266,7 +202,6 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
         Quantity portionQty = original.getQuantity().divideBy(portionCount);
         Money portionPrice  = original.getPurchasePrice()
                 .proportionalTo(portionQty.getAmount(), original.getQuantity().getAmount());
-
         FridgeSection section = requireSection(original.getSectionType());
 
         List<FridgeItem> portionedItems = new ArrayList<>(portionCount);
@@ -279,36 +214,48 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
             portionedItems.add(child);
             fridgeMeta = fridgeMeta.addItem(portionPrice);
         }
-
         registerEvent(FridgeDomainEvent.FridgeItemPortionedEvent.of(memberId, fridgeItemId, portionCount));
         return portionedItems;
     }
 
-    // ── 기한 연장 ─────────────────────────────────────────────────────
+    // ── 소비기한 연장 ─────────────────────────────────────────────────
 
     /**
-     * 기한 연장.
-     * 유통기한 임박(7일 이내) 또는 만료된 아이템에만 적용.
-     * additionalDays는 ShelfLifeAdvisorPort(RAG)의 추천값.
+     * 소비기한 연장.
+     *
+     * <h3>연장 횟수 제한 없음</h3>
+     * 사용자가 냉동 미개봉 보관 등을 직접 판단해 반복 연장할 수 있다.
+     * 한 번이라도 연장된 아이템은 {@code ExpirationInfo.isShelfLifeExtended()==true}로 확인 가능.
+     *
+     * <h3>적용 조건</h3>
+     * 소비기한이 설정된 아이템 중 임박(7일 이내) 또는 초과된 아이템에만 적용 가능.
+     * 소비기한 미설정 아이템은 먼저 {@link #registerExpiration}으로 등록 필요.
      */
     public void extend(String fridgeItemId, int additionalDays, LocalDate today) {
         FridgeItem item = requireActiveItem(fridgeItemId);
+
+        if (!item.getExpirationInfo().isExpirationSet())
+            throw new IllegalStateException(
+                    "소비기한이 설정되지 않은 아이템은 연장할 수 없습니다. itemId: " + fridgeItemId);
         if (!item.isNearExpiry(today, 7) && !item.isExpired(today))
             throw new IllegalStateException(
-                    "유통기한 임박 또는 만료된 아이템에만 연장 가능. itemId: " + fridgeItemId);
+                    "소비기한 임박 또는 초과된 아이템에만 연장 가능. itemId: " + fridgeItemId);
+
+        LocalDate originalExpiresAt = item.getExpirationInfo().getOriginalExpiresAt() != null
+                ? item.getExpirationInfo().getOriginalExpiresAt()
+                : item.getExpirationInfo().getExpiresAt();
 
         LocalDate[] dates = item.extend(additionalDays);
+        int newExtensionCount = item.getExpirationInfo().getExtensionCount();
+
         registerEvent(FridgeDomainEvent.FridgeItemShelfLifeExtendedEvent.of(
-                memberId, fridgeItemId, dates[0], dates[1], additionalDays));
+                memberId, fridgeItemId,
+                originalExpiresAt, dates[1],
+                additionalDays, newExtensionCount));
     }
 
     // ── 즉석 요리 ─────────────────────────────────────────────────────
 
-    /**
-     * 즉석 요리.
-     * 재료 일괄 소비 + 요리 결과 아이템 생성, 단일 트랜잭션.
-     * 이벤트에 consumedIngredients 스냅샷 포함 → Saving BC가 재료별 집계 가능.
-     */
     public FridgeItem cook(
             List<String> ingredientItemIds,
             GroceryItemRef cookedGroceryRef,
@@ -336,7 +283,6 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
                 this.fridgeId, section, memberId,
                 cookedGroceryRef, cookedQty, totalPrice,
                 cookedExpiresAt, targetSection, ItemProcessingType.COOKED);
-
         section.addItem(cookedItem);
         fridgeMeta = fridgeMeta.addItem(totalPrice);
 
@@ -345,11 +291,8 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
         return cookedItem;
     }
 
-    // ── 유통기한 임박 배치 ────────────────────────────────────────────
+    // ── 소비기한 임박 배치 ────────────────────────────────────────────
 
-    /**
-     * 임박 아이템 이벤트 등록 (배치 스케줄러 → notification_server 연동).
-     */
     public void registerNearExpiryEvents(LocalDate today, int thresholdDays) {
         sections.values().stream()
                 .flatMap(s -> s.activeItems().stream())
@@ -390,11 +333,8 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
         }
     }
 
-    public Map<SectionType, FridgeSection> getSections() {
-        return Collections.unmodifiableMap(sections);
-    }
-
-    public FridgeSection getSection(SectionType type) { return requireSection(type); }
+    public Map<SectionType, FridgeSection> getSections() { return Collections.unmodifiableMap(sections); }
+    public FridgeSection getSection(SectionType type)    { return requireSection(type); }
 
     @Override public boolean equals(Object o) {
         if (this == o) return true;
