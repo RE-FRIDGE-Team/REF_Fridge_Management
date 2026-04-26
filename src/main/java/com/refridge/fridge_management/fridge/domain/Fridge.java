@@ -32,20 +32,22 @@ import java.util.*;
  *
  * <h2>도메인 연산 — 진입점</h2>
  * <pre>
- *   Fridge.fill(...)         → 아이템 추가 (Recognition 완료 후)
- *   Fridge.consume(id)       → 먹기 → FridgeItemConsumedEvent 발행
- *   Fridge.dispose(id)       → 폐기 → FridgeItemDisposedEvent 발행
- *   Fridge.move(id, section) → 구역 이동 → FridgeItemMovedEvent 발행
- *   Fridge.portion(id, n)    → 소분 → 자식 FridgeItem n개 생성
- *   Fridge.extend(id, days)  → 유통기한 연장 (임박·만료 아이템 한정)
- *   Fridge.cook(...)         → 즉석 요리 (재료 일괄 소비 + 요리 결과 생성)
+ *   Fridge.fill(...)                       → 아이템 추가 (Recognition 완료 후)
+ *   Fridge.registerFillCompletedEvent(...) → 채우기 완료 이벤트 등록 (Feedback BC 연동)
+ *   Fridge.consume(id)                     → 먹기  → FridgeItemConsumedEvent
+ *   Fridge.dispose(id)                     → 폐기  → FridgeItemDisposedEvent
+ *   Fridge.move(id, section)               → 구역 이동 → FridgeItemMovedEvent
+ *   Fridge.portion(id, n)                  → 소분  → 자식 FridgeItem n개 생성
+ *   Fridge.extend(id, days)                → 기한 연장 (임박·만료 아이템 한정)
+ *   Fridge.cook(...)                       → 즉석 요리 (재료 일괄 소비 + 결과 생성)
+ *   Fridge.registerNearExpiryEvents(...)   → 임박 배치용 이벤트 등록
  * </pre>
  *
  * <h2>이벤트 발행</h2>
- * {@link org.springframework.data.domain.AbstractAggregateRoot}를 상속하므로
- * {@link #registerEvent(Object)} 로 등록된 이벤트는
+ * {@link AbstractAggregateRoot}를 상속하므로
+ * {@link #registerEvent(Object)}로 등록된 이벤트는
  * {@code FridgeRepository.save()} 완료 직후 Spring ApplicationEventPublisher를 통해 자동 발행된다.
- * 이벤트 수신측: Saving BC, notification_server (Redis Stream 경유).
+ * Outbox 패턴을 통해 Redis Stream으로 전달됨.
  *
  * <h2>하위 엔티티 접근 제어</h2>
  * {@link FridgeSection#create} 및 {@link FridgeItem#create}는 package-private이다.
@@ -120,9 +122,17 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
 
     /**
      * 아이템 추가 (냉장고 채우기).
-     * Recognition 완료 Redis Stream 이벤트 수신 후 {@code RecognitionEventConsumer}가 호출.
+     * Recognition 완료 후 {@code FillFridgeUseCase}가 각 아이템마다 호출한다.
+     * 이 메서드 호출 후 반드시 {@link #registerFillCompletedEvent}를 호출해야
+     * Feedback BC 연동 이벤트가 등록된다.
      *
-     * @return 생성된 FridgeItem (Application 레이어에서 DTO 변환용)
+     * @param groceryItemRef  최종 확정 식재료 스냅샷 (GroceryItemCatalogPort로 보강된 값)
+     * @param quantity        수량
+     * @param purchasePrice   구매 가격
+     * @param expirationInfo  유통기한 정보
+     * @param sectionType     보관 구역
+     * @param processingType  가공 유형
+     * @return 생성된 FridgeItem (Application 레이어에서 DTO 변환 및 이벤트 등록에 사용)
      */
     public FridgeItem fill(
             GroceryItemRef groceryItemRef,
@@ -142,6 +152,51 @@ public class Fridge extends AbstractAggregateRoot<Fridge> {
         section.addItem(item);
         fridgeMeta = fridgeMeta.addItem(purchasePrice);
         return item;
+    }
+
+    /**
+     * 냉장고 채우기 완료 이벤트 등록 (Feedback BC 연동).
+     *
+     * <h2>호출 시점</h2>
+     * {@link #fill}로 FridgeItem을 생성한 직후, 같은 트랜잭션 내에서 호출한다.
+     * {@code FillFridgeUseCase}가 각 아이템마다 fill() → registerFillCompletedEvent() 순서로 호출.
+     *
+     * <h2>이벤트 흐름</h2>
+     * 이 이벤트는 {@code FridgeOutboxAppender}(BEFORE_COMMIT)가 캡처 →
+     * {@code fridge_pending_event} 테이블 INSERT →
+     * {@code FridgeOutboxRelayer}(@Scheduled) →
+     * {@code fridge:fill-completed} Redis Stream →
+     * core_server {@code REFFillEventConsumer} 수신 →
+     * diff 계산 후 {@code approveFeedback()} or {@code correctFeedback()} 호출.
+     *
+     * <h2>recognitionId가 null인 경우</h2>
+     * Recognition을 거치지 않고 직접 입력한 아이템(예: 수동 추가)은
+     * recognitionId가 null이다. Feedback BC의 findOrCreate 멱등 패턴이 이를 처리한다.
+     *
+     * @param recognitionId    Recognition AR ID (직접 입력 시 null)
+     * @param item             방금 fill()로 생성된 FridgeItem
+     * @param finalBrandName   사용자가 최종 입력한 브랜드명 (nullable)
+     * @param userEditedFields 사용자가 수정한 필드 집합 (수정 없으면 빈 Set)
+     */
+    public void registerFillCompletedEvent(
+            UUID recognitionId,
+            FridgeItem item,
+            String finalBrandName,
+            Set<UserEditedField> userEditedFields
+    ) {
+        Objects.requireNonNull(item, "item must not be null");
+        Objects.requireNonNull(userEditedFields, "userEditedFields must not be null");
+
+        registerEvent(FridgeDomainEvent.FridgeFillCompletedEvent.of(
+                memberId,
+                recognitionId,
+                item.getFridgeItemId(),
+                item.getGroceryItemRef(),
+                finalBrandName,
+                item.getQuantity(),
+                item.getPurchasePrice(),
+                userEditedFields
+        ));
     }
 
     // ── 먹기 ───────────────────────────────────────────────────────────
