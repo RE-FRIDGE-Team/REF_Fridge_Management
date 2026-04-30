@@ -19,13 +19,17 @@ public class QExpirationInfo extends BeanPath<ExpirationInfo> {
 
     public static final QExpirationInfo expirationInfo = new QExpirationInfo("expirationInfo");
 
+    public final BooleanPath expirationSet = createBoolean("expirationSet");
+
     public final DatePath<java.time.LocalDate> expiresAt = createDate("expiresAt", java.time.LocalDate.class);
 
-    public final DatePath<java.time.LocalDate> manufacturedAt = createDate("manufacturedAt", java.time.LocalDate.class);
+    public final NumberPath<Integer> extensionCount = createNumber("extensionCount", Integer.class);
 
     public final DatePath<java.time.LocalDate> originalExpiresAt = createDate("originalExpiresAt", java.time.LocalDate.class);
 
     public final BooleanPath shelfLifeExtended = createBoolean("shelfLifeExtended");
+
+    public final NumberPath<Long> totalExtendedDays = createNumber("totalExtendedDays", Long.class);
 
     public QExpirationInfo(String variable) {
         super(ExpirationInfo.class, forVariable(variable));

@@ -3,6 +3,7 @@ package com.refridge.fridge_management.fridge.domain.repository;
 import com.refridge.fridge_management.fridge.domain.FridgeItem;
 import com.refridge.fridge_management.fridge.domain.vo.ItemStatus;
 import com.refridge.fridge_management.fridge.domain.vo.SectionType;
+import com.refridge.fridge_management.fridge.infrastructure.persistence.querydsl.FridgeItemRepositoryImpl;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -15,7 +16,7 @@ import java.util.List;
  * <h2>왜 별도 인터페이스인가?</h2>
  * Spring Data JPA의 Custom Repository 패턴:
  * {@code FridgeItemQueryRepository} (인터페이스) +
- * {@code FridgeItemQueryRepositoryImpl} (QueryDSL 구현체)
+ * {@code FridgeItemRepositoryImpl} (QueryDSL 구현체)
  * 를 {@link FridgeItemRepository}가 함께 상속하면
  * Spring이 자동으로 구현체를 주입한다.
  *
@@ -25,7 +26,7 @@ import java.util.List;
  *
  * @author 승훈
  * @since 2026-04-22
- * @see com.refridge.fridge_management.fridge.infrastructure.persistence.querydsl.FridgeItemQueryRepositoryImpl
+ * @see FridgeItemRepositoryImpl
  * @see FridgeItemRepository
  */
 public interface FridgeItemQueryRepository {

@@ -1,6 +1,7 @@
 package com.refridge.fridge_management.config;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.refridge.fridge_management.fridge.infrastructure.persistence.querydsl.FridgeItemRepositoryImpl;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.context.annotation.Bean;
@@ -16,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
  *
  * @author 승훈
  * @since 2026-04-22
- * @see com.refridge.fridge_management.fridge.infrastructure.persistence.querydsl.FridgeItemQueryRepositoryImpl
+ * @see FridgeItemRepositoryImpl
  */
 @Configuration
 public class QueryDslConfig {

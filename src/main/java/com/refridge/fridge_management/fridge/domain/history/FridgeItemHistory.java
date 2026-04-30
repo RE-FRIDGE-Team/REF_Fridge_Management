@@ -1,6 +1,6 @@
 package com.refridge.fridge_management.fridge.domain.history;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.refridge.fridge_management.fridge.domain.vo.SectionType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -84,11 +84,13 @@ public class FridgeItemHistory {
     private HistoryEventType eventType;
 
     /**
-     * 이벤트 유형별 세부 정보 (JSON).
-     * Hibernate의 {@code SqlTypes.JSON}을 사용해 DB JSON 컬럼에 저장.
+     * 이벤트 유형별 세부 정보 (JSONB).
+     * SqlTypes.JSON → SqlTypes.JSONB: PostgreSQL JSONB 타입과 매핑.
+     * @JdbcTypeCode(SqlTypes.JSON)은 Hibernate가 json(CLOB)으로 매핑해
+     * JSONB 컬럼과 타입 불일치가 발생하므로 JSONB로 직접 지정.
      */
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "payload", columnDefinition = "json")
+    @Column(name = "payload", columnDefinition = "jsonb")
     private JsonNode payload;
 
     @Column(name = "occurred_at", nullable = false, updatable = false)
