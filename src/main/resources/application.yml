@@ -21,7 +21,7 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: validate        # Flyway? DDL ??
+      ddl-auto: validate
     properties:
       hibernate:
         jdbc:
@@ -31,6 +31,7 @@ spring:
         default_batch_fetch_size: 100
     open-in-view: false
     defer-datasource-initialization: false   # Flyway 먼저 실행 후 JPA 초기화
+    show-sql: false
 
   flyway:
     enabled: true
@@ -53,33 +54,63 @@ spring:
           max-idle: 8
           min-idle: 2
 
+  # ── Spring AI ────────────────────────────────────────────────────
   ai:
-    openai:
-      api-key: ${OPENAI_API_KEY:your-key-here}
+    ollama:
+      # 앱(Spring Boot)이 Mac 로컬에서 실행되므로 localhost 사용
+      # Ollama 실행: brew services start ollama (또는 ollama serve)
+      base-url: http://localhost:11434
+
+      # 채팅 모델: gemma4:e4b
+      # E4B = Effective 4B params (MoE), 128K context, Apache 2.0 라이선스
+      # M2 Pro 예상 속도: 30~60 토큰/초 (Metal 가속)
       chat:
         options:
-          model: gpt-4o-mini
-          temperature: 0.2
+          model: gemma4:e4b
+          temperature: 0.1   # 소비기한 추천 = 사실 기반 추론 → 낮은 temperature
+          num-ctx: 4096       # 소비기한 추천 컨텍스트는 4K면 충분 (성능 최적화)
+        init:
+          pull-model-strategy: when_missing   # 볼륨에 없을 때만 pull
+
+      # 임베딩 모델: bge-m3
+      # 다국어 SOTA 임베딩, 한국어 지원 우수, 768차원
       embedding:
         options:
-          model: text-embedding-3-small
+          model: bge-m3
+        init:
+          pull-model-strategy: when_missing
 
+    # pgvector 설정
+    # Spring AI가 vector_store 테이블 자동 생성 (initialize-schema: true)
     vectorstore:
       pgvector:
-        schema-name: vector_schema       # ??? fridge_schema? ??
-        table-name: food_knowledge        # ShelfLife RAG ????? ???
-        index-type: HNSW                  # 1.0.0: ???? ?? ?? (hnsw? OK)
-        distance-type: COSINE_DISTANCE    # 1.0.0: COSINE_DISTANCE (cosine_distance? OK)
-        dimensions: 1536                  # text-embedding-3-small ???
-        initialize-schema: true           # Spring AI? food_knowledge ??? ?? ??
-
-  docker:
-    compose:
-      enabled: true
-      file: compose.yaml
+        schema-name: vector_schema
+        table-name: food_knowledge
+        dimensions: 1024          # bge-m3 출력 차원 (1024)
+        index-type: hnsw          # HNSW: 고속 근사 최근접 탐색
+        distance-type: cosine_distance
+        initialize-schema: true   # 앱 기동 시 테이블 자동 생성
 
 server:
   port: 8081
+
+# ── RE:FRIDGE 커스텀 설정 ─────────────────────────────────────────
+refridge:
+  ai:
+    # AI provider 설정
+    # 로컬 개발: ollama
+    # 운영 전환: gemini or openai (build.gradle에 해당 스타터 추가 필요)
+    provider: ollama
+
+    # RAG 설정
+    rag:
+      enabled: true
+      top-k: 3                  # 유사 문서 상위 3개 검색
+      similarity-threshold: 0.6 # 유사도 0.6 미만 문서는 제외
+
+    # 추천 fallback 기본값 (카테고리별, LLM 실패 시)
+    fallback:
+      default-days: 3
 
 management:
   endpoints:

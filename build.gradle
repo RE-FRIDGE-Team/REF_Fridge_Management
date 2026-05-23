@@ -3,6 +3,7 @@ plugins {
     id 'groovy'
     id 'org.springframework.boot' version '4.0.5'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.flywaydb.flyway' version '11.14.1'
 }
 
 group = 'com.refridge'
@@ -19,14 +20,12 @@ configurations {
     compileOnly { extendsFrom annotationProcessor }
     querydsl {
         extendsFrom compileClasspath
-        // Spring AI는 QueryDSL APT와 무관 — compileQuerydsl 단계에서 BOM 미해석 오류 방지
         exclude group: 'org.springframework.ai'
     }
 }
 
 repositories {
     mavenCentral()
-    // Spring AI 2.0.0-M4는 Milestone 버전이므로 milestone 저장소 필수
     maven { url = 'https://repo.spring.io/milestone' }
 }
 
@@ -34,18 +33,21 @@ ext {
     queryDslVersion       = '5.1.0'
     spockVersion          = '2.4-groovy-4.0'
     testcontainersVersion = '1.20.4'
-    // Spring AI 2.0.0-M4: Spring Boot 4.0 + Spring Framework 7.0 공식 지원
-    // Spring AI 1.0.x는 Boot 4.x와 비호환 (RestClientAutoConfiguration 패키지 변경으로 기동 불가)
     springAiVersion       = '2.0.0-M4'
 }
 
-// ── Spring AI BOM ─────────────────────────────────────────────────────
-// io.spring.dependency-management 플러그인 사용 시 반드시 imports 방식 사용.
-// platform() 방식과 혼용하면 버전 해석 충돌 발생.
 dependencyManagement {
     imports {
         mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
     }
+}
+
+flyway {
+    url      = 'jdbc:postgresql://localhost:5433/fridge_db'
+    user     = 'fridge_user'
+    password = 'fridge_secret'
+    schemas  = ['fridge_schema']
+    locations = ['classpath:db/migration']
 }
 
 dependencies {
@@ -63,9 +65,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.flywaydb:flyway-database-postgresql'
 
-    // ── Spring AI 2.0.0-M4 (Boot 4.x 호환) ──────────────────────────
-    // 아티팩트 ID는 1.0.0 GA와 동일한 신규 명칭 유지
-    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    // ── Spring AI 2.0.0-M4 ───────────────────────────────────────────
+    // gemma4:e4b(채팅) + bge-m3(임베딩) — 로컬 Ollama
+    // 운영 전환 시: spring-ai-starter-model-openai 추가 후 application.yml provider 변경
+    implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
 
     // ── Lombok ───────────────────────────────────────────────────────
@@ -105,13 +108,10 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-// ── QueryDSL (플러그인 없이 직접 설정) ──────────────────────────────────
 def querydslDir = layout.buildDirectory.dir("generated/querydsl").get().asFile
 
 sourceSets {
-    main {
-        java.srcDirs += querydslDir
-    }
+    main { java.srcDirs += querydslDir }
 }
 
 tasks.withType(JavaCompile).configureEach {

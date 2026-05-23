@@ -4,9 +4,23 @@
 #   core_server: 8080, MySQL 3306, Redis 6379
 #   fridge_server: 8081, PostgreSQL 5433, Redis 6380
 #
+# ── Ollama 실행 방식 변경 ─────────────────────────────────────────────
+#   Docker 컨테이너 내 Ollama는 Mac Metal GPU를 인식하지 못함 (CPU only).
+#   M2 Pro Metal 가속을 활용하려면 Mac 로컬에 직접 설치해야 함.
+#
+#   [최초 설치 - 한 번만]
+#   brew install ollama
+#   ollama pull gemma4:e4b     # 채팅 모델 (~3.5GB)
+#   ollama pull bge-m3         # 임베딩 모델 (~1.2GB)
+#
+#   [매번 앱 기동 전]
+#   ollama serve               # 백그라운드 실행 (또는 brew services start ollama)
+#
+#   Spring AI 연결 설정 (application.yml):
+#     spring.ai.ollama.base-url: http://host.docker.internal:11434
+#     (컨테이너 내부에서 Mac 로컬 Ollama에 접근 시 host.docker.internal 사용)
+#
 # ── DB 단일화 결정 ───────────────────────────────────────────────────
-#   pgvector(Spring AI VectorStore) 사용을 위해 PostgreSQL을 이미 띄움.
-#   MySQL을 추가로 운영할 이유가 없으므로 PostgreSQL 단일 인스턴스 사용.
 #   도메인 DB와 벡터 DB는 동일 인스턴스, 스키마로 분리:
 #     - fridge_schema  : 냉장고 도메인 테이블
 #     - vector_schema  : Spring AI pgvector 테이블
@@ -21,12 +35,9 @@ services:
       POSTGRES_USER: fridge_user
       POSTGRES_PASSWORD: fridge_secret
     ports:
-      - '5433:5432'           # 호스트 5433 → 컨테이너 5432 (기본 5432와 충돌 방지)
+      - '5433:5432'
     volumes:
       - fridge-postgres-data:/var/lib/postgresql/data
-      # .sql → .sh 로 교체:
-      # docker-entrypoint-initdb.d에서 .sh가 더 안정적으로 실행됨
-      # 특히 CREATE EXTENSION vector 같은 명령이 .sql에선 간헐적으로 실패함
       - ./docker/init-schemas.sh:/docker-entrypoint-initdb.d/init-schemas.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U fridge_user -d fridge_db"]
@@ -39,7 +50,7 @@ services:
     image: 'redis:7.4-alpine'
     container_name: fridge-redis
     ports:
-      - '6380:6379'           # 호스트 6380 (core_server Redis 6379와 충돌 방지)
+      - '6380:6379'
     command: redis-server --appendonly yes
     volumes:
       - fridge-redis-data:/data
