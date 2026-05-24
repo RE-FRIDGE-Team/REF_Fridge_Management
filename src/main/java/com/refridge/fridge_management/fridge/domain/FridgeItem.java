@@ -15,6 +15,14 @@ import java.util.UUID;
 /**
  * 냉장고 아이템 Entity.
  *
+ * <h2>v4 변경점 (단위 메타데이터 컬럼 3개 추가)</h2>
+ * <ul>
+ *   <li>{@code grocery_item_default_usage_unit} — 기본 활성 단위 코드</li>
+ *   <li>{@code grocery_item_allowed_usage_units_csv} — 입력 가능 단위 CSV</li>
+ *   <li>{@code grocery_item_piece_weight_gram} — 1개당 중량(g)</li>
+ * </ul>
+ * 마이그레이션: V8.
+ *
  * <h2>책임</h2>
  * 하나의 식품 아이템의 상태(ACTIVE→소비/폐기/소분)와
  * 속성(수량, 가격, 소비기한)을 보관한다.
@@ -35,7 +43,7 @@ import java.util.UUID;
  * {@code ExpirationInfo.isShelfLifeExtended()}로 연장 여부를 확인할 수 있다.
  *
  * @author 승훈
- * @since 2025-04-20
+ * @since 2026-05-15
  */
 @Entity
 @Table(
@@ -67,13 +75,16 @@ public class FridgeItem {
 
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "groceryItemId",    column = @Column(name = "grocery_item_id")),
-            @AttributeOverride(name = "productId",        column = @Column(name = "product_id")),
-            @AttributeOverride(name = "name",             column = @Column(name = "grocery_item_name")),
-            @AttributeOverride(name = "category",         column = @Column(name = "grocery_item_category")),
-            @AttributeOverride(name = "defaultUnit",      column = @Column(name = "grocery_item_default_unit")),
-            @AttributeOverride(name = "minPortionAmount", column = @Column(name = "min_portion_amount")),
-            @AttributeOverride(name = "maxPortionAmount", column = @Column(name = "max_portion_amount"))
+            @AttributeOverride(name = "groceryItemId",        column = @Column(name = "grocery_item_id")),
+            @AttributeOverride(name = "productId",            column = @Column(name = "product_id")),
+            @AttributeOverride(name = "name",                 column = @Column(name = "grocery_item_name")),
+            @AttributeOverride(name = "category",             column = @Column(name = "grocery_item_category")),
+            @AttributeOverride(name = "defaultUnit",          column = @Column(name = "grocery_item_default_unit")),
+            @AttributeOverride(name = "minPortionAmount",     column = @Column(name = "min_portion_amount")),
+            @AttributeOverride(name = "maxPortionAmount",     column = @Column(name = "max_portion_amount")),
+            @AttributeOverride(name = "allowedUsageUnitsCsv", column = @Column(name = "grocery_item_allowed_usage_units_csv", length = 200)),
+            @AttributeOverride(name = "defaultUsageUnit",     column = @Column(name = "grocery_item_default_usage_unit", length = 20)),
+            @AttributeOverride(name = "pieceWeightGram",      column = @Column(name = "grocery_item_piece_weight_gram"))
     })
     private GroceryItemRef groceryItemRef;
 
@@ -135,17 +146,17 @@ public class FridgeItem {
             ItemProcessingType processingType
     ) {
         FridgeItem item = new FridgeItem();
-        item.fridgeItemId     = UUID.randomUUID().toString();
-        item.fridgeId         = Objects.requireNonNull(fridgeId);
-        item.fridgeSection    = Objects.requireNonNull(fridgeSection);
-        item.memberId         = Objects.requireNonNull(memberId);
-        item.groceryItemRef   = Objects.requireNonNull(groceryItemRef);
-        item.quantity         = Objects.requireNonNull(quantity);
-        item.purchasePrice    = Objects.requireNonNull(purchasePrice);
-        item.expirationInfo   = Objects.requireNonNull(expirationInfo);
-        item.sectionType      = Objects.requireNonNull(sectionType);
-        item.processingType   = Objects.requireNonNull(processingType);
-        item.status           = ItemStatus.ACTIVE;
+        item.fridgeItemId       = UUID.randomUUID().toString();
+        item.fridgeId           = Objects.requireNonNull(fridgeId);
+        item.fridgeSection      = Objects.requireNonNull(fridgeSection);
+        item.memberId           = Objects.requireNonNull(memberId);
+        item.groceryItemRef     = Objects.requireNonNull(groceryItemRef);
+        item.quantity           = Objects.requireNonNull(quantity);
+        item.purchasePrice      = Objects.requireNonNull(purchasePrice);
+        item.expirationInfo     = Objects.requireNonNull(expirationInfo);
+        item.sectionType        = Objects.requireNonNull(sectionType);
+        item.processingType     = Objects.requireNonNull(processingType);
+        item.status             = ItemStatus.ACTIVE;
         item.parentFridgeItemId = null;
         return item;
     }

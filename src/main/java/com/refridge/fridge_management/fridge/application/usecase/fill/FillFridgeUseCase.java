@@ -17,6 +17,12 @@ import java.util.List;
 /**
  * 냉장고 채우기 유스케이스 (UC1).
  *
+ * <h2>v4 변경점</h2>
+ * {@link #applySnapshot}에서 단위 메타데이터 3종
+ * ({@code allowedUsageUnits}, {@code defaultUsageUnit}, {@code pieceWeightGram})을
+ * {@code GroceryItemRef}에 영구 저장한다.
+ * 이로써 Cook 등 후속 동작에서 core_server를 재호출할 필요가 없어진다.
+ *
  * <h2>소비기한 미설정 정책</h2>
  * 채우기 시점에는 소비기한을 입력받지 않는다.
  * {@code Fridge.fill()}은 {@code ExpirationInfo.unset()}으로 FridgeItem을 생성하며,
@@ -25,7 +31,7 @@ import java.util.List;
  * <h2>처리 흐름 (한 트랜잭션)</h2>
  * <pre>
  * [각 아이템마다]
- *   1. GroceryItemCatalogPort.fetch() → GroceryItemRef 스냅샷 보강
+ *   1. GroceryItemCatalogPort.fetch() → GroceryItemRef 스냅샷 보강 (단위 메타데이터 포함)
  *   2. Fridge.fill()                  → FridgeItem 생성 (소비기한 미설정)
  *   3. Fridge.registerFillCompletedEvent() → FridgeFillCompletedEvent 등록
  *   ↓
@@ -37,7 +43,7 @@ import java.util.List;
  * </pre>
  *
  * @author 승훈
- * @since 2026-04-26
+ * @since 2026-05-15
  */
 @Slf4j
 @Service
@@ -95,11 +101,21 @@ public class FillFridgeUseCase {
         return builder.build();
     }
 
+    /**
+     * core_server 스냅샷을 GroceryItemRef Builder에 반영.
+     *
+     * <h3>v4 변경점</h3>
+     * 단위 메타데이터 3종을 추가로 전달 — 이후 Cook 시 core_server 재호출 불필요.
+     */
     private void applySnapshot(GroceryItemRef.Builder builder, GroceryItemSnapshot snap) {
         builder.name(snap.name())
                 .category(snap.category())
                 .defaultUnit(snap.defaultUnit())
                 .minPortionAmount(snap.minPortionAmount())
-                .maxPortionAmount(snap.maxPortionAmount());
+                .maxPortionAmount(snap.maxPortionAmount())
+                // v4 신규 — 단위 메타데이터
+                .allowedUsageUnits(snap.allowedUsageUnits())
+                .defaultUsageUnit(snap.defaultUsageUnit())
+                .pieceWeightGram(snap.pieceWeightGram());
     }
 }

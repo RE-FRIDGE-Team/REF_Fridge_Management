@@ -3,13 +3,21 @@ package com.refridge.fridge_management.fridge.controller.request;
 import com.refridge.fridge_management.fridge.application.usecase.cook.UsageSpec;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 
 /**
- * 요리 재료 사용량 명세 Request DTO
+ * 요리 재료 사용량 명세 Request DTO.
+ *
+ * <h2>v4 변경점</h2>
+ * <ul>
+ *   <li>SPOON, COUNT 타입 활성화 — 더 이상 fallback 안내 메시지 던지지 않음</li>
+ *   <li>{@code count}, {@code spoonType} 필드 추가</li>
+ *   <li>{@code weightPerUnitGram} 클라이언트 전송 불필요 —
+ *       {@code GroceryItemRef.pieceWeightGram}에서 자동 활용</li>
+ * </ul>
  *
  * <h2>설계 의도</h2>
  * {@link UsageSpec}은 도메인 레이어의 sealed interface이므로
@@ -23,8 +31,8 @@ import java.math.BigDecimal;
  * FULL    : (추가 필드 없음)
  * QUANTITY: amount, unit 필수
  * RATIO   : ratio 필수 (0.0 < ratio ≤ 1.0)
- * SPOON   : (향후 구현 — 현재 UnsupportedOperationException)
- * COUNT   : (향후 구현 — 현재 UnsupportedOperationException)
+ * SPOON   : spoons, spoonType 필수 (TSP|TBSP) — 액체 단위 FridgeItem에만 적용
+ * COUNT   : count 필수 (1 이상) — pieceWeightGram 또는 EA 단위 FridgeItem에 적용
  * </pre>
  *
  * <h2>클라이언트 요청 예시</h2>
@@ -37,10 +45,16 @@ import java.math.BigDecimal;
  *
  * // 절반 사용
  * { "type": "RATIO", "ratio": 0.5 }
+ *
+ * // 간장 2큰술
+ * { "type": "SPOON", "spoons": 2, "spoonType": "TBSP" }
+ *
+ * // 계란 3알
+ * { "type": "COUNT", "count": 3 }
  * </pre>
  *
  * @author 승훈
- * @since 2026-04-26
+ * @since 2026-05-15
  * @see UsageSpec
  */
 public record UsageSpecRequest(
@@ -56,7 +70,18 @@ public record UsageSpecRequest(
         /** RATIO 타입 시 사용 비율 (0.0 초과 ~ 1.0 이하) */
         @DecimalMin(value = "0.0", inclusive = false, message = "ratio는 0.0 초과여야 합니다")
         @DecimalMax(value = "1.0", message = "ratio는 1.0 이하여야 합니다")
-        BigDecimal ratio
+        BigDecimal ratio,
+
+        /** SPOON 타입 시 스푼 수 (양수, 소수도 허용 예: 0.5스푼) */
+        @DecimalMin(value = "0.0", inclusive = false, message = "spoons는 양수여야 합니다")
+        BigDecimal spoons,
+
+        /** SPOON 타입 시 스푼 유형 (TSP=5ml, TBSP=15ml) */
+        UsageSpec.SpoonUsage.SpoonType spoonType,
+
+        /** COUNT 타입 시 사용 개수 (1 이상) */
+        @Min(value = 1, message = "count는 1 이상이어야 합니다")
+        Integer count
 ) {
     /**
      * Request DTO → 도메인 {@link UsageSpec} 변환.
@@ -81,9 +106,19 @@ public record UsageSpecRequest(
                 yield new UsageSpec.RatioUsage(ratio);
             }
 
-            case SPOON, COUNT ->
+            case SPOON -> {
+                if (spoons == null || spoonType == null)
                     throw new IllegalArgumentException(
-                            type.name() + " 타입은 아직 지원하지 않습니다. RATIO를 사용해주세요.");
+                            "SPOON 타입은 spoons와 spoonType이 필수입니다.");
+                yield new UsageSpec.SpoonUsage(spoons, spoonType);
+            }
+
+            case COUNT -> {
+                if (count == null)
+                    throw new IllegalArgumentException(
+                            "COUNT 타입은 count가 필수입니다.");
+                yield new UsageSpec.CountUsage(count);
+            }
         };
     }
 

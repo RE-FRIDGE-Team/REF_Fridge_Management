@@ -1,6 +1,5 @@
 package com.refridge.fridge_management.fridge.infrastructure.grocery;
 
-import com.refridge.fridge_management.fridge.domain.vo.GroceryItemRef;
 import com.refridge.fridge_management.fridge.domain.vo.GroceryItemRef.FoodCategory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,24 +12,27 @@ import java.util.Optional;
 /**
  * core_server GroceryItem 조회 어댑터.
  *
+ * <h2>v4 변경점</h2>
+ * <ul>
+ *   <li>호출 메서드 변경: {@code findById} → {@code findMetadataById}</li>
+ *   <li>응답 매핑 확장: {@code allowedUsageUnits}, {@code defaultUsageUnit},
+ *       {@code pieceWeightGram} 3개 필드를 {@link GroceryItemSnapshot}으로 전달</li>
+ * </ul>
+ *
  * <h2>핵심 변환 책임</h2>
  * <ul>
  *   <li>{@code id/productId}: core_server {@code Long} → fridge_server {@code String}</li>
  *   <li>{@code category}: core_server {@code item_type} → fridge_server {@code FoodCategory}</li>
+ *   <li>단위 메타데이터: response 필드 → snapshot 필드로 그대로 패스 (해석은 도메인 책임)</li>
  * </ul>
  *
- * <h2>FoodCategory 매핑 전략</h2>
- * core_server는 대분류/중분류 2단계 카테고리(item_type)를 사용하고,
- * fridge_server는 단일 {@code FoodCategory}(12개) enum을 사용한다.
- * 계란(계란 name + RAW_MEAT item_type)은 name 기반으로 {@code EGG}로 분리한다.
- *
- * <h2>현재 상태 (API 미완성)</h2>
- * core_server의 {@code GET /grocery-items/{id}}가 미완성이므로
- * 404 또는 연결 실패 시 {@code Optional.empty()} fallback.
- * {@code FillFridgeUseCase}에서 클라이언트 전달 기본 정보로 대체 처리됨.
+ * <h2>장애 격리</h2>
+ * core_server 호출 실패 시 {@code Optional.empty()} 반환.
+ * {@code FillFridgeUseCase}는 빈 값을 받으면 클라이언트가 전송한
+ * 기본 정보(groceryItemId, name)만으로 GroceryItemRef를 구성한다.
  *
  * @author 승훈
- * @since 2026-04-26
+ * @since 2026-05-15
  */
 @Slf4j
 @Component
@@ -42,21 +44,26 @@ public class HttpGroceryItemAdapter implements GroceryItemCatalogPort {
     @Override
     public Optional<GroceryItemSnapshot> fetch(String groceryItemId) {
         try {
-            CoreServerGroceryItemResponse resp = client.findById(groceryItemId);
+            CoreServerGroceryItemResponse resp = client.findMetadataById(groceryItemId);
 
             FoodCategory category = mapCategory(resp.category(), resp.name());
 
             GroceryItemSnapshot snapshot = new GroceryItemSnapshot(
                     String.valueOf(resp.id()),
                     resp.name(),
-                    category != null ? FoodCategory.valueOf(category.name()) : null,
+                    category,
                     resp.defaultUnit(),
                     resp.minPortionAmount(),
-                    resp.maxPortionAmount()
+                    resp.maxPortionAmount(),
+                    resp.allowedUsageUnits(),
+                    resp.defaultUsageUnit(),
+                    resp.pieceWeightGram()
             );
 
-            log.debug("[HttpGroceryItemAdapter] 조회 성공: id={}, name={}, category={}",
-                    groceryItemId, resp.name(), category);
+            log.debug("[HttpGroceryItemAdapter] 조회 성공: id={}, name={}, category={}, " +
+                            "defaultUnit={}, allowedUsageUnits={}, defaultUsageUnit={}, pieceWeightGram={}",
+                    groceryItemId, resp.name(), category, resp.defaultUnit(),
+                    resp.allowedUsageUnits(), resp.defaultUsageUnit(), resp.pieceWeightGram());
 
             return Optional.of(snapshot);
 
@@ -100,9 +107,6 @@ public class HttpGroceryItemAdapter implements GroceryItemCatalogPort {
      * SNACK              → PROCESSED
      * null / 알 수 없음  → ETC
      * </pre>
-     *
-     * @param itemType core_server item_type 문자열
-     * @param name     식재료명 (계란 구분용)
      */
     private FoodCategory mapCategory(String itemType, String name) {
         if (itemType == null) return FoodCategory.ETC;

@@ -18,45 +18,33 @@ import java.util.List;
 /**
  * 즉석 요리 유스케이스 (UC8).
  *
+ * <h2>v4 변경점</h2>
+ * <ul>
+ *   <li>{@code UsageSpec.toUsedRatio()} 시그니처 변경 대응:
+ *       {@code FridgeItem} 전체를 전달하여 {@code pieceWeightGram} 등 메타데이터에 접근.</li>
+ *   <li>{@link UsageSpec.CountUsage}와 {@link UsageSpec.SpoonUsage}가 실제 구현되어
+ *       클라이언트가 "계란 3알", "간장 2큰술" 같은 자연스러운 입력을 보낼 수 있음.</li>
+ * </ul>
+ *
  * <h2>UsageSpec 기반 사용량 처리</h2>
- * 각 재료는 {@code UsageSpec.toUsedRatio()}로 사용 비율을 계산한다.
+ * 각 재료는 {@code UsageSpec.toUsedRatio(item)}으로 사용 비율을 계산한다.
  *
  * <h3>전량 사용 (ratio = 1.0)</h3>
  * {@code Fridge.cook()}에 재료 ID를 전달 → AR이 재료 CONSUMED 처리.
  *
  * <h3>부분 사용 (ratio < 1.0)</h3>
- * v3에서는 UI에서 소분 후 요리하는 흐름을 유도한다.
- * UseCase 레벨에서는 ratio < 1.0이어도 전량 소비로 처리하되,
+ * v4에서도 UseCase 레벨에서는 전량 소비로 처리하되,
  * 사용 비율만큼 가격 기여분만 계산해 요리 결과 totalPrice에 반영한다.
- * (향후: 소분 후 잔여 아이템 생성 흐름으로 고도화 가능)
+ * (소분 후 잔여 아이템 생성 흐름은 향후 별도 작업)
  *
  * <h2>가격 계산</h2>
  * <pre>
  * usedPrice = purchasePrice × usedRatio
  * totalPrice = Σ usedPrice (모든 재료)
  * </pre>
- * 요리 결과 FridgeItem의 purchasePrice = totalPrice.
- * 소분된 요리당 재료비 = totalPrice / servings.
- *
- * <h2>처리 흐름</h2>
- * <pre>
- * POST /fridge/cook
- *   ↓
- * [각 재료마다]
- *   UsageSpec.toUsedRatio() → 비율 계산
- *   usedPrice = purchasePrice × ratio
- *   재료 CONSUMED (전량 처리 — v3)
- *   ↓
- * Fridge.cook(ingredientItemIds, cookedRef, cookedExpiresAt, servings, targetSection)
- *   → FridgeItemCookedEvent 등록 (consumedIngredients 스냅샷 포함)
- *   ↓
- * BEFORE_COMMIT:
- *   FridgeOutboxAppender  → fridge:cooked XADD
- *   FridgeItemHistoryAppender → 각 재료 COOKED 이력 INSERT
- * </pre>
  *
  * @author 승훈
- * @since 2026-04-26
+ * @since 2026-05-15
  */
 @Slf4j
 @Service
@@ -76,22 +64,20 @@ public class CookUseCase {
         for (CookIngredientCommand ingredientCmd : command.ingredients()) {
             FridgeItem ing = findActiveItem(fridge, ingredientCmd.fridgeItemId());
 
-            BigDecimal usedRatio = ingredientCmd.usageSpec().toUsedRatio(
-                    ing.getQuantity().getAmount(),
-                    ing.getQuantity().getUnit().name()
-            );
+            // v4: UsageSpec.toUsedRatio가 FridgeItem 전체를 받음
+            BigDecimal usedRatio = ingredientCmd.usageSpec().toUsedRatio(ing);
 
             // 사용분 가격 계산 (ratio 기반 비례)
             Money usedPrice = ing.getPurchasePrice()
                     .proportionalTo(usedRatio, BigDecimal.ONE);
             totalUsedPrice = totalUsedPrice.add(usedPrice);
 
-            // v3: 전량 소비로 처리 (Fridge.cook이 CONSUMED 처리)
+            // v4: 전량 소비로 처리 (Fridge.cook이 CONSUMED 처리)
             ingredientItemIds.add(ingredientCmd.fridgeItemId());
 
             // ratio < 1.0 케이스 로그 — 향후 소분 후 요리 흐름으로 고도화 예정
             if (usedRatio.compareTo(BigDecimal.ONE) < 0) {
-                log.info("[CookUseCase] 부분 사용 재료 (ratio={}) — v3에서는 전량 소비 처리. " +
+                log.info("[CookUseCase] 부분 사용 재료 (ratio={}) — v4에서는 전량 소비 처리. " +
                         "fridgeItemId={}", usedRatio, ingredientCmd.fridgeItemId());
             }
         }
@@ -121,7 +107,7 @@ public class CookUseCase {
 
     /**
      * 요리 결과 GroceryItemRef 구성.
-     * v3: cookedName 기반 임시 ref (category=COOKED).
+     * cookedName 기반 임시 ref (category=COOKED).
      * cookedGroceryItemId가 있으면 해당 ID 사용 (core_server 등록 흐름 향후 연동).
      */
     private GroceryItemRef buildCookedGroceryItemRef(CookCommand command) {
